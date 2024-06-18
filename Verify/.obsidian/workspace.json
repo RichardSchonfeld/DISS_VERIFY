@@ -18,8 +18,21 @@
                 "source": false
               }
             }
+          },
+          {
+            "id": "457a4daf6a8f673d",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "Concept.md",
+                "mode": "source",
+                "source": false
+              }
+            }
           }
-        ]
+        ],
+        "currentTab": 1
       }
     ],
     "direction": "vertical"
@@ -146,8 +159,9 @@
       "command-palette:Open command palette": false
     }
   },
-  "active": "644e0b7b9fbbeab8",
+  "active": "457a4daf6a8f673d",
   "lastOpenFiles": [
+    "Untitled.canvas",
     "Concept.md"
   ]
 }
