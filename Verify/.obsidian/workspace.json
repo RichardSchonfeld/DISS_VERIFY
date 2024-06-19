@@ -82,7 +82,8 @@
       }
     ],
     "direction": "horizontal",
-    "width": 300
+    "width": 300,
+    "collapsed": true
   },
   "right": {
     "id": "abdc96c2a8af46d1",
@@ -161,7 +162,7 @@
   },
   "active": "457a4daf6a8f673d",
   "lastOpenFiles": [
-    "Untitled.canvas",
-    "Concept.md"
+    "Concept.md",
+    "Untitled.canvas"
   ]
 }
