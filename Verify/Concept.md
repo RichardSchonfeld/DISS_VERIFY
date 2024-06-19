@@ -66,10 +66,33 @@ An ETH-based platform for validating user data.
 	- <u>Why would someone lie about college degree?</u>
 		- Candidates believed they will never be questioned on the topic or asked to provide a real certificate
 		- <u>1/3 (29.6%) lied about their college degree </u>
-		- 1/3 (35.1%) had a degree : lied about what subject their degree was in
-		- 1/4 (26%) lied about the grade they got
-		- 1/10 (11.9%) lied about which college they attended
-		- 
+		- 1/3 (35.1%) had a degree : lied about what subject their degree was in : actual %: 
+		- 1/4 (26%) lied about the grade they got : actual %: 
+		- 1/10 (11.9%) lied about which college they attended : actual %:
+		- 1/2 (54%) lied about being a college graduate at all : actual %:
+	- ###### Verification of Educational Credentials by Employers Global [source](https://www.intelligent.com/is-your-college-degree-worth-it-half-of-hiring-managers-dont-check-education-credentials/)
+		- <u> US </u>
+			- 53% of employers always verify
+			- 24% sometimes
+			- 23% never do
+			- 9 in 10 managers have caught applicants falsifying information about their educational backgrounds
+			- 40% employers still likely to hire applicant who lies about their educational background
+			- <u>Companies usually verify:</u>
+				- Degree Title: 44%
+				- Graduation year: 43%
+				- Schools attended: 36%
+				- GPA/grades: 25%
+				- Specific coursework: 25%
+				- All of the above: 23%
+			- <u>Why some companies don't verify:</u>
+				- Specific education not needed for job (39%)
+				- Value experience over education (36%)
+				- Trust applicants don't lie (24%)
+				- Too costly and time-consuming (23%)
+			- <u>How companies verify:</u> [source](https://www.businessnewsdaily.com/hr/education-verification-for-employment)
+				- **Employers contact Uni themselves** - "sometimes a slow process", "may be cumbersome if candidate attended multiple schools" :<mark style="background: #ADCCFFA6;"> MENTIONS Family Educational Rights and Privacy Act restricting who can view student records</mark>
+				- **Requesting transcript from candidates** - problem if you're looking for specific skills or nontraditional degrees are taken (like liberal arts where ppl design their own majors) then you'd want to review their transcript : this is unofficial however adn the candidate can lie
+				- **Employment background check services** - 
     
 - Countries making it a criminal offense highlight the prevalence of this issue (SA again) [source](https://www.marisit.co.za/how-to-spot-a-fake-cv-what-to-do/)
 	- 
