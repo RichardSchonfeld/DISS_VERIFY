@@ -100,6 +100,30 @@ An ETH-based platform for validating user data.
 - **Fake job references [source](https://standout-cv.com/usa/study-fake-job-references-resume-lies) -- could do something about that here using a transaction or having some signed reference that is authorized by the authority**
 
 ---
+### How to sign a person
+- Will require some government ID verification
+	- <mark style="background: #FF5582A6;">How will I ensure people aren't too defensive and that privacy is considered?</mark> - we use some privacy features for this
+	- Each user gets a public key, <u>ensures uniqueness</u>
+		- Every public key can pertain to only 1 govt. ID
+		- Each public key 
+	- We can also include some partial-privacy feature that will ensure the company the candidate is registered as who he claims he is, i.e. some partical reveal of privacy like the number f their ID card e.g.
+	- <u>Look into: onfido, jumio</u>
+
+### How to sign an entity
+- Submit proof of government registration, accreditation document
+	- <mark style="background: #BBFABBA6;">Maybe ask for help here?</mark>
+
+
+### How to read the document
+- As a requesting entity you scan a <u>QR code</u> included in the CV
+- You can also find the person <u>manually</u>
+	- **When request is made:**
+		- User receives notice, and has to sign the transaction with their private key
+		- Transaction completes and the requester can see the 'approved' or 'signed' status for that profile
+			- This is signed as a transaction <mark style="background: #FF5582A6;">--need to figure this out what it will contain exactly as payload--</mark> but it would make sense to have some kind of encryption with a hidden message using the requester's private key
+- 
+
+---
 
 ### Potential "cool features":
 
