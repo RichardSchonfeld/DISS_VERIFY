@@ -1,4 +1,4 @@
-var Election = artifacts.require(".Election.sol");
+var Election = artifacts.require("./Election.sol");
 
 /*
 Artifact = contract abstraction specific to truffle, exposes it as interactable

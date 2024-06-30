@@ -6,12 +6,10 @@ contract Election {
     // Store Candidate
 
     // Read Candidate
-    string public candidate;
+    string public candidate; // called as a 'function()' to get value
 
     // Constructor - used to deploy SM to BC so needs public scope
      constructor() public {
         candidate = "Candidate 1"; //No underscore = state variable
-
     }
-
 }
