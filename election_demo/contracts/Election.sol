@@ -3,13 +3,33 @@ pragma solidity ^0.5.16;
 // We're writing a VOTING PLATFORM as demo/training :)
 
 contract Election {
-    // Store Candidate
+    // Model candidate
+    struct Candidate {
+        uint id;
+        string name;
+        uint voteCount;
+    }
+    // Store candidate
 
-    // Read Candidate
-    string public candidate; // called as a 'function()' to get value
+    // Fetch candidate
+     // Key here corresponds to candidate's ID
+        // Returns blank candidate for any non-existing mapping request
+        // Makes it impossible to determine how big the mapping is
+    mapping(uint => Candidate) public candidates;
 
-    // Constructor - used to deploy SM to BC so needs public scope
-     constructor() public {
-        candidate = "Candidate 1"; //No underscore = state variable
+    // Store candidate count
+    uint public candidatesCount;
+
+    /* CONSTRUCTOR */
+    constructor() public {
+        addCandidate("Candidate 1");
+        addCandidate("Candidate 2");
+    }
+
+    /* FUNCTIONS */
+
+    function addCandidate(string memory _name) private {
+        candidatesCount++;
+        candidates[candidatesCount] = Candidate(candidatesCount, _name, 0);
     }
 }
