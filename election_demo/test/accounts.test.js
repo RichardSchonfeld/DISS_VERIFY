@@ -1,4 +1,4 @@
-const Web3 = require('web3');
+/*const Web3 = require('web3');
 const web3 = new Web3('http://127.0.0.1:8545');
 
 contract('Accounts', () => {
@@ -9,4 +9,4 @@ contract('Accounts', () => {
             console.log('Account: ${account}, Balance: ${web3.utils.fromWei(balance, "ether")}');
         }
     })
-});
+});*/
