@@ -64,7 +64,8 @@ App = {
     var content = $("#content");
 
     loader.show();
-    content.hide();
+    //content.hide();
+    content.show();
 
     // Load account data
     web3.eth.getCoinbase(function(err, account) {
