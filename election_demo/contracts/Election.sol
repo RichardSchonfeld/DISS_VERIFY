@@ -45,12 +45,11 @@ contract Election {
             // How do we know which acc has voted?
             // Solidity passes metadata above defined args, part of which can be person sending function
 
-        if(!voters[msg.sender]) {
-            voters[msg.sender] = true;
-                candidates[_candidateId].voteCount++;
-        } else {
-            // Do nothing?
+        require(!voters[msg.sender]);
+        //require a valid candidate
+        require(_candidateId > 0 && _candidateId <= candidatesCount);
+        voters[msg.sender] = true;
+        candidates[_candidateId].voteCount++;
             // https://coinsbench.com/how-to-deploy-and-interact-with-solidity-contracts-with-python-and-ganache-be63334323e6
-        }
     }
 }
