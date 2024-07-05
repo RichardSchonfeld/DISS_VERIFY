@@ -51,4 +51,8 @@ contract Verify {
             claim.studentNumber, claim.fullName, claim.signed
         );
     }
+
+    function claimCount() public {
+        for
+    }
 }
