@@ -38,7 +38,7 @@ contract Verify {
     }
 
     function getClaim(uint256 _claimId) public view returns (
-        address initiator,
+        address requester,
         address authority,
         string memory yearOfGraduation,
         string memory studentNumber,
