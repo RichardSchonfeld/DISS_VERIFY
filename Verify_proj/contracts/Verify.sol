@@ -6,7 +6,7 @@ contract Verify {
         address authority;
         string yearOfGraduation;
         string studentNumber;
-        string fullname;
+        string fullName;
         bool signed;
     }
 
@@ -16,7 +16,7 @@ contract Verify {
     event ClaimCreated(uint256 indexed claimId, address indexed initiator, address indexed authority);
     event ClaimSigned(uint256 indexed claimId, address indexed authority);
 
-    function createClaim(address _requester, string memory _yearOfGraduation, string memory _studentNumber, string memory _fullName) public {
+    function createClaim(address _requester, address _authority, string memory _yearOfGraduation, string memory _studentNumber, string memory _fullName) public {
         claimCount++;
         claims[claimCount] = ClaimData({
             requester: msg.sender,
@@ -34,7 +34,7 @@ contract Verify {
         require(msg.sender == claim.authority, "Only the designated authority can sign this claim");
         require(!claim.signed, "Claim is already signed");
         claim.signed = true;
-        emit ClaimSigned(_claimIdm msg.sender);
+        emit ClaimSigned(_claimId, msg.sender);
     }
 
     function getClaim(uint256 _claimId) public view returns (
@@ -48,7 +48,7 @@ contract Verify {
         ClaimData storage claim = claims[_claimId];
         return (
             claim.requester, claim.authority, claim.yearOfGraduation,
-            claim.studentNumber, claim.fullname, claim.signed
+            claim.studentNumber, claim.fullName, claim.signed
         );
     }
 }

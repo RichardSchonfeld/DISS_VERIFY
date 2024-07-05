@@ -4,7 +4,7 @@ App = {
   account: '0x0',
   hasVoted: false,
 
-  init: async function () {
+  init: async function() {
     console.log("Initializing app...");
     return await App.initWeb3();
   },
@@ -56,6 +56,14 @@ App = {
       }).on('error', console.error);
     });
   },
+
+  // NEW FUNC
+  /*listenForEvents: function() {
+    console.log("Seting up event listeners...");
+    App.contracts.Verify.deployed().then(function(instance) {
+      instance.
+    })
+  }*/
 
   render: function() {
     console.log("Rendering app...");
