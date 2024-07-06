@@ -41,6 +41,7 @@ App = {
       App.contracts.Verify.setProvider(App.web3Provider);
       console.log("Contract initialized");
       App.listenForEvents();
+      App.bindEvents();
       return App.render();
     });
   },
@@ -108,7 +109,9 @@ App = {
 
           // Render claim result
           // **Edited Section**
-          var claimTemplate = "<tr><th>" + requester + "</th><td>" + authority + "</td><td>" + yearOfGraduation + "</td></tr>";
+          var claimTemplate = "<tr><th>" + requester + "</th><td>" + authority + "</td><td>"
+              + yearOfGraduation + "</td><td>" + studentNumber +  "</td><td>" + fullName + "</td><td>"
+              + signed + "</td>";
           claimResults.append(claimTemplate);
         });
       }
@@ -117,7 +120,32 @@ App = {
     }).catch(function(error) {
       console.warn(error);
     });
+  },
+
+  bindEvents: function (event) {
+    $(document).on('submit', '#createClaimForm', App.handleCreateClaim);
+  },
+  handleCreateClaim: function(event) {
+    event.preventDefault();
+    console.log("CREATING EVENT")
+    var authority = $('#authority').val();
+    var yearOfGraduation = $('#yearOfGraduation').val();
+    var studentNumber = $('#studentNumber').val();
+    var fullName = $('#fullName').val();
+
+    App.contracts.Verify.deployed().then(function(instance) {
+      return instance.createClaim(
+          App.account, // Requester
+          authority, yearOfGraduation, studentNumber, fullName,
+          {from: App.account}
+      );
+    }).then(function(result) {
+      console.log("Claim created", result);
+    }).catch(function(err) {
+      console.error("Error creating claim", err);
+    })
   }
+
 };
 
 $(function() {
