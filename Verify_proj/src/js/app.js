@@ -33,20 +33,10 @@ App = {
     return App.initContract();
   },
 
-  /*initContract: function() {
-    console.log("Initializing contract...");
-    $.getJSON("Election.json", function(election) {
-      App.contracts.Election = TruffleContract(election);
-      App.contracts.Election.setProvider(App.web3Provider);
-      console.log("Contract initialized.");
-      App.listenForEvents();
-      return App.render();
-    });
-  },*/
-
   initContract: function() {
     console.log("Initializing contract...");
-    $.getJSON("Verify.json", function(election) {
+    // **Edited Section**
+    $.getJSON("Verify.json", function(verify) {
       App.contracts.Verify = TruffleContract(verify);
       App.contracts.Verify.setProvider(App.web3Provider);
       console.log("Contract initialized");
@@ -55,10 +45,11 @@ App = {
     });
   },
 
-  /*listenForEvents: function() {
+  listenForEvents: function() {
     console.log("Setting up event listeners...");
-    App.contracts.Election.deployed().then(function(instance) {
-      instance.VotedEvent({}, {
+    App.contracts.Verify.deployed().then(function(instance) {
+      // **Edited Section**
+      instance.ClaimEvent({}, {
         fromBlock: 0,
         toBlock: 'latest'
       }).on('data', function(event) {
@@ -66,37 +57,15 @@ App = {
         App.render();
       }).on('error', console.error);
     });
-  },*/
-
-  listenForEvents: function() {
-    console.log("Setting up event listeners...");
-    App.contracts.Verify.deployed().then(function(instance) {
-      instance.getClaim({}, {
-        fromBlock: 0,
-        toBlock: 'latest'
-      }).on('data', function(event) {
-        console.log("event triggered", claim);
-        App.render();
-      }).on('error', console.error);
-    });
   },
 
-  // NEW FUNC
-  /*listenForEvents: function() {
-    console.log("Seting up event listeners...");
-    App.contracts.Verify.deployed().then(function(instance) {
-      instance.
-    })
-  }*/
-
-  /*render: function() {
+  render: function() {
     console.log("Rendering app...");
-    var electionInstance;
+    var verifyInstance;
     var loader = $("#loader");
     var content = $("#content");
 
     loader.show();
-    //content.hide();
     content.show();
 
     // Load account data
@@ -108,106 +77,48 @@ App = {
       } else {
         console.error("Error getting coinbase account", err);
       }
-    });*/
+    });
 
-    render: function() {
-      console.log("Rendering app...");
-      var verityInstance;
-      var loader = $("#loader");
-      var content = $("#content");
+    // **Edited Section**
+    // Load contract data
+    App.contracts.Verify.deployed().then(function(instance) {
+      verifyInstance = instance;
+      return verifyInstance.claimCount();
+    }).then(function(claimCount) {
+      console.log("Claim count: " + claimCount);
+      var claimResults = $("#claimResults");
+      claimResults.empty();
 
-      loader.show();
-      content.show();
-      web3.eth.getCoinbase(function(err, account) {
-        if(err === null) {
-          App.account = account;
-          $("#accountAddress").html("Your Account: " + account);
-          console.log("Account loaded: " + account);
-        } else {
-          console.error("Error getting coinbase account", err);
-        }
-      });
-    },
+      for (var i = 1; i <= claimCount; i++) {
+        verifyInstance.getClaim(i).then(function(claim) {
+          /*var requester = claim["requester"];
+          var authority = claim["authority"];
+          var yearOfGraduation = claim["yearOfGraduation"];
+          var studentNumber = claim["studentNumber"];
+          var fullName = claim["fullName"];
+          var signed = claim["signed"];*/
 
-    /* Load contract data
-    App.contracts.Election.deployed().then(function(instance) {
-      electionInstance = instance;
-      return electionInstance.candidatesCount();
-    }).then(function(candidatesCount) {
-      console.log("Candidates count: " + candidatesCount);
-      var candidatesResults = $("#candidatesResults");
-      candidatesResults.empty();
+          var requester = claim[0];
+          var authority = claim[1];
+          var yearOfGraduation = claim[2];
+          var studentNumber = claim[3];
+          var fullName = claim[4];
+          var signed = claim[5];
 
-      var candidatesSelect = $('#candidatesSelect');
-      candidatesSelect.empty();
 
-      for (var i = 1; i <= candidatesCount; i++) {
-        electionInstance.candidates(i).then(function(candidate) {
-          var id = candidate[0];
-          var name = candidate[1];
-          var voteCount = candidate[2];
-
-          // Render candidate Result
-          var candidateTemplate = "<tr><th>" + id + "</th><td>" + name + "</td><td>" + voteCount + "</td></tr>"
-          candidatesResults.append(candidateTemplate);
-
-          // Render candidate ballot option
-          var candidateOption = "<option value='" + id + "'>" + name + "</option>"
-          candidatesSelect.append(candidateOption);
+          // Render claim result
+          // **Edited Section**
+          var claimTemplate = "<tr><th>" + requester + "</th><td>" + authority + "</td><td>" + yearOfGraduation + "</td></tr>";
+          claimResults.append(claimTemplate);
         });
-      }
-      return electionInstance.voters(App.account);
-    }).then(function(hasVoted) {
-      console.log("Has voted: " + hasVoted);
-      if (hasVoted) {
-        $('form').hide();
       }
       loader.hide();
       content.show();
     }).catch(function(error) {
       console.warn(error);
-    })
-  },*/
-
-  App.contracts.Verify.deployed().then(function(_instance) {
-    instance = _instance;
-    return instance.claimCount();
-  }).then(function(claimCount) {
-    console.log("Claim count: " + claimCount);
-    var claimResults = $("#claimResults");
-    claimResults.empty();
-
-    for (var i = 1; i <= claimCount; i++) {
-      instance.getClaim(i).then(function(claim) {
-        var requester = claim["requester"];
-        var authority = claim["authority"];
-        var yearOfGraduation = claim["yearOfGraduation"];
-        var studentNumber = claim["studentNumber"];
-        var fullName = claim["fullName"];
-        var signed = claim["signed"];
-
-        // Render claim result
-        var claimTemplate = "<tr><th>" + requester + "</th><td>" + authority + "</td>" + "<th><td>" + yearOfGraduation + "</td></th>"
-
-
-      });
-    }
-  }),
-/*
-  castVote: function() {
-    var candidateId = $('#candidatesSelect').val();
-    console.log("Casting vote for candidate ID: " + candidateId);
-    App.contracts.Election.deployed().then(function(instance) {
-      return instance.vote(candidateId, { from: App.account });
-    }).then(function(result) {
-      console.log("Vote casted, waiting for confirmation...");
-      $("#content").hide();
-      $("#loader").show();
-    }).catch(function(err) {
-      console.error("Error casting vote", err);
     });
   }
-};*/
+};
 
 $(function() {
   $(window).load(function() {

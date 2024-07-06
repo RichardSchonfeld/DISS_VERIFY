@@ -52,7 +52,4 @@ contract Verify {
         );
     }
 
-    function claimCount() public {
-        for
-    }
 }
