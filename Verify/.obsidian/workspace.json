@@ -76,9 +76,69 @@
                 "source": false
               }
             }
+          },
+          {
+            "id": "d11fe68324955b2a",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "Concept.md",
+                "mode": "source",
+                "source": false
+              }
+            }
+          },
+          {
+            "id": "6fd826a572761a8b",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "Literature 2 oh no its getting messy.md",
+                "mode": "source",
+                "source": false
+              }
+            }
+          },
+          {
+            "id": "fc2a89ffc90e03ed",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "Literature 2 oh no its getting messy.md",
+                "mode": "source",
+                "source": false
+              }
+            }
+          },
+          {
+            "id": "0678f185bf272f03",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "Concept.md",
+                "mode": "source",
+                "source": false
+              }
+            }
+          },
+          {
+            "id": "94ba1ac72409808f",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "Thesis Material Chapters.md",
+                "mode": "source",
+                "source": false
+              }
+            }
           }
         ],
-        "currentTab": 5
+        "currentTab": 10
       }
     ],
     "direction": "vertical"
@@ -144,7 +204,7 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "User profile.md",
+                "file": "Thesis Material Chapters.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -161,7 +221,7 @@
             "state": {
               "type": "outgoing-link",
               "state": {
-                "file": "User profile.md",
+                "file": "Thesis Material Chapters.md",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               }
@@ -184,7 +244,7 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "User profile.md"
+                "file": "Thesis Material Chapters.md"
               }
             }
           }
@@ -205,12 +265,16 @@
       "command-palette:Open command palette": false
     }
   },
-  "active": "a48ee658bfc9396a",
+  "active": "94ba1ac72409808f",
   "lastOpenFiles": [
-    "Signing a claim.md",
-    "User profile.md",
-    "Plan HIGH LEVEL.md",
     "Concept.md",
+    "Thesis Material Chapters.md",
+    "Plan HIGH LEVEL.md",
+    "Signing a claim.md",
+    "Untitled.md",
+    "User profile.md",
+    "Literature 2 oh no its getting messy.md",
+    "Concept - R.md",
     "Untitled.canvas"
   ]
 }
