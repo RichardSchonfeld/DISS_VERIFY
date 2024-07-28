@@ -1,22 +1,28 @@
 $(document).ready(function() {
-    $.ajax({
-        url: 'http://localhost:8000/api/list-claims/',
-        method: 'GET',
-        success: function(data) {
-            var claimsList = $('#claims-list');
-            data.forEach(function(claim) {
-                var listItem = '<li>' +
-                    claim.full_name + ' - ' +
-                    claim.year_of_graduation + ' - ' +
-                    claim.student_number + ' - ' +
-                    claim.ipfs_hash + ' - ' +
-                    (claim.signed ? 'Signed' : 'Not Signed') +
-                    '</li>';
-                claimsList.append(listItem);
-            });
-        },
-        error: function(error) {
-            console.error('There was an error fetching the claims!', error);
-        }
+    $('#createClaimForm').on('submit', function(event) {
+        event.preventDefault();
+
+        let formData = {
+            username: $('#username').val(),
+            authority: $('#authority').val(),
+            year_of_graduation: $('#yearOfGraduation').val(),
+            student_number: $('#studentNumber').val(),
+            full_name: $('#fullName').val(),
+        };
+
+        $.ajax({
+            url: 'http://localhost:8000/api/create_claim/',
+            type: 'POST',
+            data: JSON.stringify(formData),
+            contentType: 'application/json',
+            success: function(response) {
+                alert('Claim created successfully! Transaction Hash: ' + response.tx_hash);
+                // Optionally, refresh the list of claims or update the UI
+            },
+            error: function(error) {
+                console.error('Error creating claim:', error);
+                alert('Failed to create claim');
+            }
+        });
     });
 });
