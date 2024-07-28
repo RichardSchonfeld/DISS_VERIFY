@@ -20,7 +20,7 @@ class CreateClaimView(APIView):
 
         tx_hash = create_claim(authority, year_of_graduation, student_number, full_name)
 
-        claim = Claim(
+        """claim = Claim(
             authority=authority,
             year_of_graduation=year_of_graduation,
             student_number=student_number,
@@ -28,7 +28,7 @@ class CreateClaimView(APIView):
             ipfs_hash='',  # Assuming IPFS hash is generated separately
             transaction_hash=tx_hash
         )
-        claim.save()
+        claim.save()"""
 
         return Response({"tx_hash": tx_hash}, status=status.HTTP_201_CREATED)
 
