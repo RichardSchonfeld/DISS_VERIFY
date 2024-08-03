@@ -1,3 +1,4 @@
+from django.views.decorators.csrf import csrf_exempt
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
@@ -46,6 +47,36 @@ class SignClaimView(APIView):
         claim.save()
 
         return Response({"tx_hash": tx_hash}, status=status.HTTP_200_OK)
+
+
+import ipfshttpclient
+from django.shortcuts import render
+from django.http import JsonResponse
+
+
+@csrf_exempt
+def upload_ipfs_view(request):
+    if request.method == 'POST':
+        # Handle file upload
+        uploaded_file = request.FILES.get('file')
+        if uploaded_file:
+            try:
+                # Connect to IPFS running on localhost
+                client = ipfshttpclient.connect('/ip4/127.0.0.1/tcp/5001')
+
+                # Add file to IPFS
+                result = client.add(uploaded_file)
+                cid = result['Hash']
+
+                # Return the CID of the uploaded file
+                return JsonResponse({'cid': cid})
+            except Exception as e:
+                return JsonResponse({'error': str(e)}, status=500)
+        else:
+            return JsonResponse({'error': 'No file provided'}, status=400)
+
+    # For GET request, render the upload page
+    return render(request, 'upload-ipfs.html')
 
 
 class ListClaimsView(APIView):

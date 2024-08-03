@@ -131,14 +131,26 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Thesis Material Chapters.md",
+                "file": "Literature 2 oh no its getting messy.md",
+                "mode": "source",
+                "source": false
+              }
+            }
+          },
+          {
+            "id": "9599157593652042",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "Most stuff is handled by JS but -.md",
                 "mode": "source",
                 "source": false
               }
             }
           }
         ],
-        "currentTab": 10
+        "currentTab": 11
       }
     ],
     "direction": "vertical"
@@ -204,7 +216,7 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "Thesis Material Chapters.md",
+                "file": "Most stuff is handled by JS but -.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -221,7 +233,7 @@
             "state": {
               "type": "outgoing-link",
               "state": {
-                "file": "Thesis Material Chapters.md",
+                "file": "Most stuff is handled by JS but -.md",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               }
@@ -244,7 +256,7 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "Thesis Material Chapters.md"
+                "file": "Most stuff is handled by JS but -.md"
               }
             }
           }
@@ -265,16 +277,17 @@
       "command-palette:Open command palette": false
     }
   },
-  "active": "94ba1ac72409808f",
+  "active": "9599157593652042",
   "lastOpenFiles": [
-    "Concept.md",
-    "Thesis Material Chapters.md",
-    "Plan HIGH LEVEL.md",
-    "Signing a claim.md",
-    "Untitled.md",
-    "User profile.md",
     "Literature 2 oh no its getting messy.md",
+    "Most stuff is handled by JS but -.md",
     "Concept - R.md",
+    "User profile.md",
+    "Untitled.md",
+    "Plan HIGH LEVEL.md",
+    "Thesis Material Chapters.md",
+    "Concept.md",
+    "Signing a claim.md",
     "Untitled.canvas"
   ]
 }
