@@ -2,6 +2,7 @@ from django.views.decorators.csrf import csrf_exempt
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
+import requests
 from django.shortcuts import render
 from django.contrib.auth.models import User
 from .models import Claim
@@ -54,8 +55,8 @@ from django.shortcuts import render
 from django.http import JsonResponse
 
 
-@csrf_exempt
-def upload_ipfs_view(request):
+#@csrf_exempt
+"""def upload_ipfs_view(request):
     if request.method == 'POST':
         # Handle file upload
         uploaded_file = request.FILES.get('file')
@@ -76,7 +77,18 @@ def upload_ipfs_view(request):
             return JsonResponse({'error': 'No file provided'}, status=400)
 
     # For GET request, render the upload page
+    return render(request, 'upload-ipfs.html')"""
+
+@csrf_exempt
+def upload_ipfs_view(request):
+    if request.method == 'POST':
+        uploaded_file = request.FILES.get('file')
+        if uploaded_file:
+            files = {'file': uploaded_file}
+            response = requests.post("http://127.0.0.1:8080/ipfs/", files=files)
+            print(response.text)
     return render(request, 'upload-ipfs.html')
+
 
 
 class ListClaimsView(APIView):
