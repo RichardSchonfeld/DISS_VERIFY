@@ -1,4 +1,5 @@
 from pathlib import Path
+import os
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -84,6 +85,22 @@ USE_TZ = True
 STATIC_URL = '/static/'
 STATICFILES_DIRS = [BASE_DIR / "static"]
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Infura API variables
+INFURA_API_KEY = os.getenv('INFURA_API_KEY')
+INFURA_API_SECRET = os.getenv('INFURA_API_KEY_SECRET')
+
+
+
+# Ensuring presence of vars loaded
+#if not all([INFURA_API_KEY, INFURA_API_SECRET]):
+    #raise ValueError("Infura API credentials not set properly in environ settings")
+
+if not INFURA_API_KEY:
+    raise ValueError("Infura API key (INFURA_PROJECT_ID) is not set properly in environment settings.")
+if not INFURA_API_SECRET:
+    raise ValueError("Infura API secret (INFURA_PROJECT_SECRET) is not set properly in environment settings.")
+
 
 ETHEREUM_NODE_URL = 'http://localhost:8545'
 CONTRACT_ADDRESS = '0x87B4AAba7c69BB9880914Ddfa0bc25d401480d3d'

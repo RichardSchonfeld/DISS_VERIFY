@@ -1,4 +1,5 @@
 from django.views.decorators.csrf import csrf_exempt
+from django.conf import settings
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
@@ -50,7 +51,6 @@ class SignClaimView(APIView):
         return Response({"tx_hash": tx_hash}, status=status.HTTP_200_OK)
 
 
-import ipfshttpclient
 from django.shortcuts import render
 from django.http import JsonResponse
 
@@ -83,10 +83,38 @@ from django.http import JsonResponse
 def upload_ipfs_view(request):
     if request.method == 'POST':
         uploaded_file = request.FILES.get('file')
+        endpoint = "https://ipfs.infura.io:5001/api/v0/add"
+        api_key = settings.INFURA_API_KEY
+        api_secret = settings.INFURA_API_SECRET
+        if uploaded_file:
+            try:
+                files = {
+                    'file': (uploaded_file.name, uploaded_file.read()),
+                }
+
+                response = requests.post(
+                    endpoint,
+                    files=files,
+                    auth = (api_key, api_secret)
+                )
+
+                if response.status_code == 200:
+                    result = response.json()
+                    cid = result['Hash']
+                    return JsonResponse({'cid': cid})
+                else:
+                    return JsonResponse({'error': response.text}, status=response.status_code)
+            except Exception as e:
+                return JsonResponse({'error': str(e)}, status=500)
+        else:
+            return JsonResponse({'error': 'No file provided'}, status=500)
+
+    """if request.method == 'POST':
+        uploaded_file = request.FILES.get('file')
         if uploaded_file:
             files = {'file': uploaded_file}
             response = requests.post("http://127.0.0.1:8080/ipfs/", files=files)
-            print(response.text)
+            print(response.text)"""
     return render(request, 'upload-ipfs.html')
 
 
