@@ -10,6 +10,8 @@ from .models import Claim
 from .serializers import ClaimSerializer
 from .eth_utils import create_claim, sign_claim, get_claim
 
+from .exceptions import IPFSHashNotReturnedException
+
 
 def index(request):
     return render(request, "index.html")
@@ -81,6 +83,9 @@ from django.http import JsonResponse
 
 @csrf_exempt
 def upload_ipfs_view(request):
+    """
+        ------- ORIGINAL IMPLEMENTATION FOR INFURA -------
+            --- may be useful if I migrate to have it all at once place ---
     if request.method == 'POST':
         uploaded_file = request.FILES.get('file')
         endpoint = "https://ipfs.infura.io:5001/api/v0/add"
@@ -107,16 +112,62 @@ def upload_ipfs_view(request):
             except Exception as e:
                 return JsonResponse({'error': str(e)}, status=500)
         else:
-            return JsonResponse({'error': 'No file provided'}, status=500)
+            return JsonResponse({'error': 'No file provided'}, status=500)"""
 
-    """if request.method == 'POST':
+    if request.method == 'POST':
         uploaded_file = request.FILES.get('file')
+        ipfs_url = "http://127.0.0.1:5001/api/v0"
+        ipfs_endpoint_add = "/add"
+
+        check_if_pinned("QmNnVARxwSwCiD5FT7f33cUN1ExtgxNwnk3vKcdyNiH5R9")
+
         if uploaded_file:
             files = {'file': uploaded_file}
-            response = requests.post("http://127.0.0.1:8080/ipfs/", files=files)
-            print(response.text)"""
+            add_url = ipfs_url + ipfs_endpoint_add
+            response = requests.post(add_url, files=files)
+
+            if response.status_code == 200:
+                result = response.json()
+                if 'Hash' not in result:
+                    raise IPFSHashNotReturnedException
+
+                cid = result.get('Hash')
+                print("File uploaded successfully, hash: " + cid)
+
+                print("PINNING")
+                ipfs_endpoint_pin = f"/pin/add?arg={cid}"
+                pin_url = ipfs_url + ipfs_endpoint_pin
+                pin_response = requests.post(pin_url)
+
+                if pin_response.status_code == 200:
+                    print(f"File {cid} pinned successfully")
+                else:
+                    print("Error pinning file: ", response.status_code, response.text)
+
+                return JsonResponse(result)
+            else:
+                return JsonResponse({'error': response.text}, status=response.status_code)
+
+
     return render(request, 'upload-ipfs.html')
 
+import requests
+
+def check_if_pinned(cid):
+    url = f'http://127.0.0.1:5001/api/v0/pin/ls?arg={cid}'
+    response = requests.post(url)
+    if response.status_code == 200:
+        result = response.json()
+        if cid in result.get('Keys', {}):
+            print(f"File {cid} is pinned.")
+        else:
+            print(f"File {cid} is not pinned.")
+    else:
+        print(f"Error checking pin status: {response.status_code}, {response.text}")
+
+# Check if file is pinned
+cid = 'QmNnVARxwSwCiD5FT7f33cUN1ExtgxNwnk3vKcdyNiH5R9'
+#check_if_pinned(cid)
 
 
 class ListClaimsView(APIView):
