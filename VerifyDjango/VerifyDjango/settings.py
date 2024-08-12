@@ -96,10 +96,10 @@ INFURA_API_SECRET = os.getenv('INFURA_API_KEY_SECRET')
 #if not all([INFURA_API_KEY, INFURA_API_SECRET]):
     #raise ValueError("Infura API credentials not set properly in environ settings")
 
-if not INFURA_API_KEY:
-    raise ValueError("Infura API key (INFURA_PROJECT_ID) is not set properly in environment settings.")
-if not INFURA_API_SECRET:
-    raise ValueError("Infura API secret (INFURA_PROJECT_SECRET) is not set properly in environment settings.")
+#if not INFURA_API_KEY:
+#    raise ValueError("Infura API key (INFURA_PROJECT_ID) is not set properly in environment settings.")
+#if not INFURA_API_SECRET:
+#    raise ValueError("Infura API secret (INFURA_PROJECT_SECRET) is not set properly in environment settings.")
 
 
 ETHEREUM_NODE_URL = 'http://localhost:8545'

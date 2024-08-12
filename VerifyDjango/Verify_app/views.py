@@ -15,6 +15,9 @@ from .exceptions import IPFSHashNotReturnedException
 
 def index(request):
     return render(request, "index.html")
+
+def login_view(request):
+    return render(request, "login.html")
 class CreateClaimView(APIView):
     def post(self, request):
         data = request.data

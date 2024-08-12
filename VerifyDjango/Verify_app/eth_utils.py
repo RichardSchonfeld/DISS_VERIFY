@@ -3,7 +3,7 @@ from web3 import Web3
 import json
 
 # Load contract ABI and address
-"""with open('build/contracts/Verify.json') as f:
+with open('build/contracts/Verify.json') as f:
     contract_data = json.load(f)
     contract_abi = contract_data['abi']
 
@@ -14,7 +14,7 @@ contract_address = settings.CONTRACT_ADDRESS
 web3 = Web3(Web3.HTTPProvider('http://localhost:8545'))
 
 # Initialize the contract
-contract = web3.eth.contract(address=contract_address, abi=contract_abi)"""
+contract = web3.eth.contract(address=contract_address, abi=contract_abi)
 
 def create_claim(authority_address, year_of_graduation, student_number, full_name):
     """requester_address = web3.eth.accounts[0]

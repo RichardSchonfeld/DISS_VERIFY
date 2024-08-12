@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Login with MetaMask</title>
+    <script src="https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js"></script>
+</head>
+<body>
+    <h1>Login with MetaMask</h1>
+    <button id="loginButton">Login with Ethereum</button>
+
+    <script type="text/javascript">
+        async function loginWithMetaMask() {
+            if (typeof window.ethereum !== 'undefined') {
+                const web3 = new Web3(window.ethereum);
+
+                // Request account access if needed
+                await ethereum.request({ method: 'eth_requestAccounts' });
+
+                const accounts = await web3.eth.getAccounts();
+                const account = accounts[0];
+
+                // Request a nonce from the backend
+                const nonceResponse = await fetch(`/web3/nonce/?address=${account}`);
+                console.log("OBTAINING NONCE")
+                const { nonce } = await nonceResponse.json();
+                console.log("NONCE OBTAINED")
+                console.log(nonce)
+
+                // Sign the nonce with MetaMask
+                const signature = await web3.eth.personal.sign(`Sign this nonce: ${nonce}`, account, '');
+
+                console.log("SIGNED PAST SIGNATURE")
+
+                // Send the signature to the backend for verification and login
+                const verifyResponse = await fetch(`/web3/verify/`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ account, signature }),
+                });
+
+                if (verifyResponse.ok) {
+                    window.location.href = "/";
+                } else {
+                    alert("Login failed!");
+                }
+            } else {
+                alert('MetaMask is not detected. Please install it to use this feature.');
+            }
+        }
+
+        document.getElementById("loginButton").addEventListener("click", loginWithMetaMask);
+    </script>
+</body>
+</html>
