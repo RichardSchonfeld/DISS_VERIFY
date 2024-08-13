@@ -1,0 +1,15 @@
+{% block content %}
+  <h2>Recover Private Key</h2>
+  <form method="POST">
+    {% csrf_token %}
+    <label for="password">Enter your password:</label>
+    <input type="password" name="password" required>
+    <button type="submit">Recover Key</button>
+  </form>
+
+  {% if private_key %}
+    <p>Your Private Key: {{ private_key }}</p>
+  {% elif error %}
+    <p style="color: red;">{{ error }}</p>
+  {% endif %}
+{% endblock %}

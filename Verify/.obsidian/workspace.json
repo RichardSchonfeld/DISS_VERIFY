@@ -136,9 +136,21 @@
                 "source": false
               }
             }
+          },
+          {
+            "id": "e99a843dd1a7d639",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "How it works.md",
+                "mode": "source",
+                "source": false
+              }
+            }
           }
         ],
-        "currentTab": 11
+        "currentTab": 12
       }
     ],
     "direction": "vertical"
@@ -204,7 +216,7 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "Some lit notes.md",
+                "file": "How it works.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -221,7 +233,7 @@
             "state": {
               "type": "outgoing-link",
               "state": {
-                "file": "Some lit notes.md",
+                "file": "How it works.md",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               }
@@ -244,7 +256,7 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "Some lit notes.md"
+                "file": "How it works.md"
               }
             }
           }
@@ -265,8 +277,10 @@
       "command-palette:Open command palette": false
     }
   },
-  "active": "9599157593652042",
+  "active": "e99a843dd1a7d639",
   "lastOpenFiles": [
+    "Some lit notes.md",
+    "How it works.md",
     "Literature 2 oh no its getting messy.md",
     "Most stuff is handled by JS but -.md",
     "Concept - R.md",

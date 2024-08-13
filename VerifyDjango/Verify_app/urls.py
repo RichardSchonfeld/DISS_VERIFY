@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import index, ListClaimsView, CreateClaimView, upload_ipfs_view, login_view
+from .views import index, ListClaimsView, CreateClaimView, upload_ipfs_view, login_view, register, recover_key
 from .web3_utils import get_nonce, verify_signature
 
 urlpatterns = [
@@ -10,5 +10,7 @@ urlpatterns = [
     path('login/', login_view, name='login_view'),
     path('web3/nonce/', get_nonce, name='get_nonce'),
     path('web3/verify/', verify_signature, name='verify_signature'),
+path('register/', register, name='register'),
+    path('recover_key/', recover_key, name='recover_key'),
 
 ]

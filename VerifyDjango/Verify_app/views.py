@@ -3,12 +3,22 @@ from django.conf import settings
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
+
 import requests
-from django.shortcuts import render
+from web3 import Web3
+
+from django.shortcuts import render, redirect
 from django.contrib.auth.models import User
+from django.contrib.auth import login
+from django.contrib.auth.decorators import login_required
+
 from .models import Claim
+from .forms import UserRegisterForm
+
 from .serializers import ClaimSerializer
 from .eth_utils import create_claim, sign_claim, get_claim
+
+from .encryption_utils import encrypt_private_key, derive_key, decrypt_private_key
 
 from .exceptions import IPFSHashNotReturnedException
 
@@ -18,6 +28,54 @@ def index(request):
 
 def login_view(request):
     return render(request, "login.html")
+
+
+def register(request):
+    if request.method == 'POST':
+        form = UserRegisterForm(request.POST)
+        if form.is_valid():
+            user = form.save()
+            password = form.cleaned_data.get('password1')
+
+            # Generate Ethereum account
+            web3 = Web3()
+            account = web3.eth.account.create()
+            eth_address = account.address
+            private_key = account._private_key.hex()
+            print("PRIV KEY")
+            print(private_key)
+            # Encrypt the private key
+            encrypted_private_key = encrypt_private_key(private_key, password)
+
+            # Save the Ethereum address and encrypted private key to the user profile
+            user.public_key = eth_address
+            user.encrypted_private_key = encrypted_private_key
+            user.save()
+
+            login(request, user)
+            return redirect('index')
+    else:
+        form = UserRegisterForm()
+    return render(request, 'register.html', {'form': form})
+
+
+@login_required
+def recover_key(request):
+    if request.method == 'POST':
+        password = request.POST.get('password')
+        user = request.user
+
+        try:
+            private_key = decrypt_private_key(user.encrypted_private_key, password)
+            return render(request, 'recover_key.html', {'private_key': private_key})
+        except Exception as e:
+            return render(request, 'recover_key.html',
+                          {'error': 'Invalid password or key could not be decrypted.'})
+
+    return render(request, 'recover_key.html')
+
+
+
 class CreateClaimView(APIView):
     def post(self, request):
         data = request.data

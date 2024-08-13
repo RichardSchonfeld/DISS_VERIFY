@@ -59,3 +59,12 @@ def get_claim(claim_id):
         'full_name': claim[4],
         'signed': claim[5]
     }"""
+
+
+def create_new_eth_account():
+    web3 = Web3()
+    account = web3.eth.account.create()
+    return account.address, account.private_key.hex()
+
+    # We encrypt using their wallet keys if they have a wallet (the key fragments themselves)
+        # Otherwise we use auto-generated keys encrypted with user passwords
