@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Create Claim</title>
+</head>
+<body>
+    <h1>Create Claim</h1>
+    <form method="POST" action="{% url 'create-claim' %}">
+        {% csrf_token %}
+        <label for="year_of_graduation">Year of Graduation:</label>
+        <input type="text" id="year_of_graduation" name="year_of_graduation" required><br>
+
+        <label for="student_number">Student Number:</label>
+        <input type="text" id="student_number" name="student_number" required><br>
+
+        <label for="full_name">Full Name:</label>
+        <input type="text" id="full_name" name="full_name" required><br>
+
+        <label for="password">Password:</label>
+        <input type="password" id="password" name="password" required><br>
+
+
+        <button type="submit">Submit Claim</button>
+    </form>
+
+
+</body>
+</html>
+
+

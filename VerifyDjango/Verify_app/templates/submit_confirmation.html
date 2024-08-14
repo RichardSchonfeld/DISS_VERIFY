@@ -1,0 +1,15 @@
+<!-- submit_confirmation.html -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Transaction Confirmation</title>
+</head>
+<body>
+    <h1>Transaction Submitted Successfully!</h1>
+    <p>Your transaction has been successfully submitted to the Ethereum blockchain.</p>
+    <p>Transaction Hash: {{ txn_hash }}</p>
+    <a href="https://etherscan.io/tx/{{ txn_hash }}" target="_blank">View on Etherscan</a>
+</body>
+</html>

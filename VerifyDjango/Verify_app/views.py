@@ -12,11 +12,11 @@ from django.contrib.auth.models import User
 from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
 
-from .models import Claim
+from .models import Claim, CustomUser, Web3Account
 from .forms import UserRegisterForm
 
 from .serializers import ClaimSerializer
-from .eth_utils import create_claim, sign_claim, get_claim
+from .eth_utils import create_claim, sign_claim, get_claim, fund_account
 
 from .encryption_utils import encrypt_private_key, derive_key, decrypt_private_key
 
@@ -52,6 +52,8 @@ def register(request):
             user.encrypted_private_key = encrypted_private_key
             user.save()
 
+            fund_account(eth_address)
+
             login(request, user)
             return redirect('index')
     else:
@@ -75,28 +77,91 @@ def recover_key(request):
     return render(request, 'recover_key.html')
 
 
+@login_required
+def create_claim(request):
+    if request.method == 'POST':
+        year_of_graduation = request.POST['year_of_graduation']
+        student_number = request.POST['student_number']
+        full_name = request.POST['full_name']
 
-class CreateClaimView(APIView):
-    def post(self, request):
-        data = request.data
-        authority = data.get('authority')
-        year_of_graduation = data.get('year_of_graduation')
-        student_number = data.get('student_number')
-        full_name = data.get('full_name')
+        import json
+        # Load contract ABI and address
+        with open('build/contracts/Verify.json') as f:
+            contract_data = json.load(f)
+            contract_abi = contract_data['abi']
+        # Update the contract address here after migration
+        contract_address = settings.CONTRACT_ADDRESS
+        # Connect to local Ganache
+        web3 = Web3(Web3.HTTPProvider('http://localhost:8545'))
+        # Initialize the contract
+        verify_contract_instance = web3.eth.contract(address=contract_address, abi=contract_abi)
 
-        tx_hash = create_claim(authority, year_of_graduation, student_number, full_name)
+        # Determine the type of user
+        if isinstance(request.user, Web3Account):
+            # MetaMask user - Web3Account
+            user_profile = request.user
+            wallet_address = user_profile.ethereum_address
 
-        """claim = Claim(
-            authority=authority,
-            year_of_graduation=year_of_graduation,
-            student_number=student_number,
-            full_name=full_name,
-            ipfs_hash='',  # Assuming IPFS hash is generated separately
-            transaction_hash=tx_hash
-        )
-        claim.save()"""
+            # Prepare the transaction data for MetaMask
+            transaction = verify_contract_instance.functions.createClaim(
+                _requester=wallet_address,
+                _authority=wallet_address,
+                _yearOfGraduation=year_of_graduation,
+                _studentNumber=student_number,
+                _fullName=full_name
+            )
+            context = {
+                'transaction_data': transaction.buildTransaction({
+                    'chainId': 1,  # Ethereum Mainnet
+                    'gas': 2000000,
+                    'gasPrice': web3.toWei('50', 'gwei'),
+                    'nonce': web3.eth.getTransactionCount(wallet_address),
+                }),
+                'use_metamask': True,
+            }
+            return render(request, 'submit_metamask.html', context)
 
-        return Response({"tx_hash": tx_hash}, status=status.HTTP_201_CREATED)
+        elif isinstance(request.user, CustomUser):
+
+            user_profile = request.user
+            wallet_address = Web3.to_checksum_address(user_profile.public_key)
+            from .encryption_utils import decrypt_private_key
+
+            private_key = decrypt_private_key(user_profile.encrypted_private_key, request.POST['password'])
+            # Prepare the transaction data for Django user
+
+            transaction = verify_contract_instance.functions.createClaim(
+                _requester=wallet_address,
+                _authority=wallet_address,
+                _yearOfGraduation=year_of_graduation,
+                _studentNumber=student_number,
+                _fullName=full_name
+            )
+
+            built_txn = transaction.build_transaction({
+                'chainId': 1337,  # Ganache
+                'gas': 210000,
+                'gasPrice': web3.to_wei('50', 'gwei'),
+                'nonce': web3.eth.get_transaction_count(wallet_address),
+            })
+
+            # Sign the transaction
+            signed_txn = web3.eth.account.sign_transaction(built_txn, private_key)
+            # Send the transaction
+            txn_hash = web3.eth.send_raw_transaction(signed_txn.rawTransaction)
+
+            context = {
+                'txn_hash': txn_hash.hex(),
+                'use_metamask': False,
+            }
+
+            return render(request, 'submit_confirmation.html', context)
+    else:
+        return render(request, 'create_claim.html')
+
+def view_claims(request):
+    claims = get_claim()
+    return render(request, 'view_claims.html', {'claims': claims})
 
 class SignClaimView(APIView):
     def post(self, request):

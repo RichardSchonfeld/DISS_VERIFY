@@ -20,13 +20,13 @@ from django.contrib.auth.models import User, AbstractUser
         return self.email"""
 
 class CustomUser(AbstractUser):
-    username = None
+    username = models.CharField(max_length=42, unique=True, blank=True, null=True)
     email = models.EmailField(null=False, unique=True)
 
     public_key = models.CharField(max_length=42, unique=True, blank=True, null=True)
     encrypted_private_key = models.TextField(blank=True, null=True)
 
-    USERNAME_FIELD = 'email'
+    USERNAME_FIELD = 'username'
     REQUIRED_FIELDS = []
 
     def __str__(self):
@@ -34,7 +34,7 @@ class CustomUser(AbstractUser):
 
 class Web3Account(models.Model):
     user = models.OneToOneField(CustomUser, on_delete=models.CASCADE)
-    address = models.CharField(max_length=42, unique=True)
+    public_key = models.CharField(max_length=42, unique=True)
 
     def __str__(self):
         return self.address

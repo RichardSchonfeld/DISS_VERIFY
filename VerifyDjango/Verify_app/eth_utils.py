@@ -1,6 +1,7 @@
 from django.conf import settings
 from web3 import Web3
 import json
+import os
 
 # Load contract ABI and address
 with open('build/contracts/Verify.json') as f:
@@ -48,18 +49,54 @@ def sign_claim(claim_id, authority_address, signature):
     return None
 
 
-def get_claim(claim_id):
-    """
-    claim = contract.functions.getClaim(claim_id).call()
-    return {
-        'requester': claim[0],
-        'authority': claim[1],
-        'year_of_graduation': claim[2],
-        'student_number': claim[3],
-        'full_name': claim[4],
-        'signed': claim[5]
-    }"""
+def get_claim():
+    claims = []
 
+    claim_count = contract.functions.claimCount().call()
+
+    for claim_id in range(1, claim_count + 1):
+        claim = contract.functions.getClaim(claim_id).call()
+        claims.append({
+            'requester': claim[0],
+            'authority': claim[1],
+            'year_of_graduation': claim[2],
+            'student_number': claim[3],
+            'full_name': claim[4],
+            'signed': claim[5],
+        })
+
+    return claims
+
+def fund_account(new_account_address):
+    preset_account_address = '0x8262eEdE53E5405910d2552263be913FE3270622'
+    preset_private_key = os.getenv('FUND_TEST_PRIVATE_KEY')
+
+    # Define the amount of Ether to send (in Wei)
+    initial_balance = web3.to_wei(0.01, 'ether')  # Sending 0.01 Ether to the new account
+
+    # Get the nonce for the transaction
+    nonce = web3.eth.get_transaction_count(Web3.to_checksum_address(preset_account_address))
+
+    # Create the transaction
+    tx = {
+        'nonce': nonce,
+        'to': new_account_address,
+        'value': initial_balance,
+        'gas': 21000,  # Standard gas limit for a simple ETH transfer
+        'gasPrice': web3.to_wei('50', 'gwei')
+    }
+
+    # Sign the transaction
+    signed_tx = web3.eth.account.sign_transaction(tx, preset_private_key)
+
+    # Send the transaction
+    tx_hash = web3.eth.send_raw_transaction(signed_tx.rawTransaction)
+
+    # Wait for the transaction to be mined
+    web3.eth.wait_for_transaction_receipt(tx_hash)
+
+    # Return the transaction hash
+    return tx_hash.hex()
 
 def create_new_eth_account():
     web3 = Web3()

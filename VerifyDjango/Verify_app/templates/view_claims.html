@@ -1,0 +1,45 @@
+<!-- view_claims.html -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>View Claims</title>
+</head>
+<body>
+    <h1>Submitted Claims</h1>
+
+    {% if claims %}
+        <table border="1">
+            <thead>
+                <tr>
+                    <th>Claim ID</th>
+                    <th>Requester</th>
+                    <th>Authority</th>
+                    <th>Year of Graduation</th>
+                    <th>Student Number</th>
+                    <th>Full Name</th>
+                    <th>Signed</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for claim in claims %}
+                <tr>
+                    <td>{{ forloop.counter }}</td>
+                    <td>{{ claim.requester }}</td>
+                    <td>{{ claim.authority }}</td>
+                    <td>{{ claim.year_of_graduation }}</td>
+                    <td>{{ claim.student_number }}</td>
+                    <td>{{ claim.full_name }}</td>
+                    <td>{{ claim.signed }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p>No claims found.</p>
+    {% endif %}
+
+    <a href="{% url 'create-claim' %}">Submit a New Claim</a>
+</body>
+</html>
