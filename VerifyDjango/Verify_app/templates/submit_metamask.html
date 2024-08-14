@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Sign and Submit Transaction</title>
+</head>
+<body>
+    <h1>Sign and Submit Your Claim</h1>
+    <p>Please confirm the transaction in your MetaMask wallet.</p>
+
+    <script src="https://cdn.jsdelivr.net/gh/ethereum/web3.js@1.3.0/dist/web3.min.js"></script>
+    <script>
+        window.addEventListener('load', async () => {
+            // Check if MetaMask is installed
+            if (typeof window.ethereum !== 'undefined') {
+                const web3 = new Web3(window.ethereum);
+
+                // Prepare transaction data
+                const transactionData = {{ transaction_data|safe }};
+
+                try {
+                    // Send transaction using MetaMask
+                    const txHash = await web3.eth.sendTransaction(transactionData);
+                    alert("Transaction successful! TxHash: " + txHash.transactionHash);
+                    // Redirect to confirmation page
+                    window.location.href = "{% url 'transaction_confirmation' %}?txn_hash=" + txHash.transactionHash;
+                } catch (error) {
+                    console.error("Transaction failed", error);
+                }
+            } else {
+                alert('MetaMask is not installed!');
+            }
+        });
+    </script>
+</body>
+</html>

@@ -100,7 +100,7 @@ def create_claim(request):
         if isinstance(request.user, Web3Account):
             # MetaMask user - Web3Account
             user_profile = request.user
-            wallet_address = user_profile.ethereum_address
+            wallet_address = Web3.to_checksum_address(user_profile.public_key)
 
             # Prepare the transaction data for MetaMask
             transaction = verify_contract_instance.functions.createClaim(
@@ -112,10 +112,10 @@ def create_claim(request):
             )
             context = {
                 'transaction_data': transaction.buildTransaction({
-                    'chainId': 1,  # Ethereum Mainnet
-                    'gas': 2000000,
-                    'gasPrice': web3.toWei('50', 'gwei'),
-                    'nonce': web3.eth.getTransactionCount(wallet_address),
+                    'chainId': 1337,  # Ganache
+                    'gas': 210000,
+                    'gasPrice': web3.to_wei('50', 'gwei'),
+                    'nonce': web3.eth.get_transaction_count(wallet_address),
                 }),
                 'use_metamask': True,
             }

@@ -20,11 +20,35 @@
         <label for="password">Password:</label>
         <input type="password" id="password" name="password" required><br>
 
+        {% if user.web3account %}
+    <!-- If the user is a MetaMask user, include the wallet address input -->
+        <input type="hidden" id="wallet_address" name="wallet_address">
+        {% endif %}
 
         <button type="submit">Submit Claim</button>
     </form>
 
-
+    <!-- MetaMask users: Include MetaMask initialization script -->
+    {% if user.web3account %}
+        <script src="https://cdn.jsdelivr.net/gh/ethereum/web3.js@1.3.0/dist/web3.min.js"></script>
+        <script>        window.addEventListener('load', async () => {
+                // Check if MetaMask is installed
+                if (typeof window.ethereum !== 'undefined') {
+                    // Initialize Web3 instance
+                    const web3 = new Web3(window.ethereum);
+                    try {
+                        // Request account access
+                        const accounts = await ethereum.request({ method: 'eth_requestAccounts' });
+                        document.getElementById('wallet_address').value = accounts[0];
+                    } catch (error) {
+                        console.error("User denied account access", error);
+                    }
+                } else {
+                    alert('MetaMask is not installed!');
+                }
+            });
+        </script>
+    {% endif %}
 </body>
 </html>
 
