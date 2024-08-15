@@ -73,7 +73,7 @@ def fund_account(new_account_address):
     preset_private_key = os.getenv('FUND_TEST_PRIVATE_KEY')
 
     # Define the amount of Ether to send (in Wei)
-    initial_balance = web3.to_wei(0.01, 'ether')  # Sending 0.01 Ether to the new account
+    initial_balance = web3.to_wei(0.1, 'ether')  # Sending 0.01 Ether to the new account
 
     # Get the nonce for the transaction
     nonce = web3.eth.get_transaction_count(Web3.to_checksum_address(preset_account_address))

@@ -13,7 +13,7 @@ from django.contrib.auth.models import User
 from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
 
-from .models import Claim, CustomUser, Web3Account
+from .models import Claim, CustomUser
 from .forms import UserRegisterForm
 
 from .serializers import ClaimSerializer
@@ -114,11 +114,11 @@ def create_claim(request):
         print("IPFS_hash")
         print(IPFS_hash)
 
+        user_profile = request.user
         # Determine the type of user
         #if isinstance(request.user, Web3Account):
-        if isinstance(request.user, CustomUser):
+        if user_profile.is_web3_user:
             # MetaMask user - Web3Account
-            user_profile = request.user
             wallet_address = Web3.to_checksum_address(user_profile.public_key)
 
             # Prepare the transaction data for MetaMask
@@ -142,9 +142,8 @@ def create_claim(request):
             }
             return render(request, 'submit_metamask.html', context)
 
-        elif isinstance(request.user, CustomUser):
+        elif not user_profile.is_web3_user:
 
-            user_profile = request.user
             wallet_address = Web3.to_checksum_address(user_profile.public_key)
             from .encryption_utils import decrypt_private_key
 
@@ -156,12 +155,13 @@ def create_claim(request):
                 _authority=wallet_address,
                 _yearOfGraduation=year_of_graduation,
                 _studentNumber=student_number,
-                _fullName=full_name
+                _fullName=full_name,
+                _ipfsHash=IPFS_hash
             )
 
             built_txn = transaction.build_transaction({
                 'chainId': 1337,  # Ganache
-                'gas': 210000,
+                'gas': 300000,
                 'gasPrice': web3.to_wei('50', 'gwei'),
                 'nonce': web3.eth.get_transaction_count(wallet_address),
             })

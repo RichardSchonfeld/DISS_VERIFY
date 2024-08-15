@@ -8,7 +8,7 @@ from django.contrib.auth import login
 from django.contrib.auth.models import User
 from web3 import Web3
 from eth_account.messages import encode_defunct
-from .models import Web3Account, CustomUser
+from .models import CustomUser
 
 # In-memory storage for nonces (need to move this for prod)
 nonces = {}
@@ -56,19 +56,15 @@ def verify_signature(request):
     if recovered_address.lower() == account.lower():
         # User authenticated successfully, find or create user
         try:
-            eth_account = Web3Account.objects.get(public_key=account)
-            user = eth_account.user
-        except Web3Account.DoesNotExist:
-            # Create a new user if it doesn't exist
-            user = CustomUser(username=account)
-            ### TEMPORARY - ACCOUNT REQUIRES FIX ###
-            user.email = 'asdjkl@a.com'
-            user.public_key = account
-            ### END OF TEMP FIX ###
-
+            user = CustomUser.objects.get(public_key=account)
+        except CustomUser.DoesNotExist:
+            # Create a new Web3 user if it doesn't exist
+            user = CustomUser(
+                username=account,
+                public_key=account,
+                is_web3_user=True,
+            )
             user.save()
-            eth_account = Web3Account(user=user, public_key=account)
-            eth_account.save()
 
         # Log the user in
         login(request, user)
