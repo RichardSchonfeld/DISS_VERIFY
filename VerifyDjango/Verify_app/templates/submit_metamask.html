@@ -15,15 +15,23 @@
             if (typeof window.ethereum !== 'undefined') {
                 const web3 = new Web3(window.ethereum);
 
+                // Request account access if needed
+                try {
+                    await ethereum.request({ method: 'eth_requestAccounts' });
+                } catch (error) {
+                    console.error("User denied account access", error);
+                    return;
+                }
+
                 // Prepare transaction data
                 const transactionData = {{ transaction_data|safe }};
 
                 try {
                     // Send transaction using MetaMask
                     const txHash = await web3.eth.sendTransaction(transactionData);
-                    alert("Transaction successful! TxHash: " + txHash.transactionHash);
+                    alert("Transaction successful! TxHash: " + txHash);
                     // Redirect to confirmation page
-                    window.location.href = "{% url 'transaction_confirmation' %}?txn_hash=" + txHash.transactionHash;
+                    window.location.href = "{% url 'transaction_confirmation' %}?txn_hash=" + txHash;
                 } catch (error) {
                     console.error("Transaction failed", error);
                 }

@@ -76,6 +76,9 @@ def recover_key(request):
 
     return render(request, 'recover_key.html')
 
+def transaction_confirmation(request):
+    txn_hash = request.GET.get('txn_hash')
+    return render(request, 'transaction_confirmation.html', {'txn_hash': txn_hash})
 
 @login_required
 def create_claim(request):
@@ -97,7 +100,8 @@ def create_claim(request):
         verify_contract_instance = web3.eth.contract(address=contract_address, abi=contract_abi)
 
         # Determine the type of user
-        if isinstance(request.user, Web3Account):
+        #if isinstance(request.user, Web3Account):
+        if isinstance(request.user, CustomUser):
             # MetaMask user - Web3Account
             user_profile = request.user
             wallet_address = Web3.to_checksum_address(user_profile.public_key)
@@ -111,11 +115,12 @@ def create_claim(request):
                 _fullName=full_name
             )
             context = {
-                'transaction_data': transaction.buildTransaction({
+                'transaction_data': transaction.build_transaction({
                     'chainId': 1337,  # Ganache
                     'gas': 210000,
                     'gasPrice': web3.to_wei('50', 'gwei'),
                     'nonce': web3.eth.get_transaction_count(wallet_address),
+                    'from': wallet_address
                 }),
                 'use_metamask': True,
             }

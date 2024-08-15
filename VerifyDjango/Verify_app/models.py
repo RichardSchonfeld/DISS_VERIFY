@@ -36,8 +36,11 @@ class Web3Account(models.Model):
     user = models.OneToOneField(CustomUser, on_delete=models.CASCADE)
     public_key = models.CharField(max_length=42, unique=True)
 
+    USERNAME_FIELD = 'public_key'
+    REQUIRED_FIELDS = []
+
     def __str__(self):
-        return self.address
+        return self.public_key
 
 class Claim(models.Model):
     requester = models.ForeignKey(CustomUser, on_delete=models.CASCADE)

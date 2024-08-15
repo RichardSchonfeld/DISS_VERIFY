@@ -62,6 +62,7 @@ def verify_signature(request):
             user = CustomUser(username=account)
             ### TEMPORARY - ACCOUNT REQUIRES FIX ###
             user.email = 'asdjkl@a.com'
+            user.public_key = account
             ### END OF TEMP FIX ###
 
             user.save()
