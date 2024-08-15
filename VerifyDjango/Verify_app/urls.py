@@ -14,5 +14,7 @@ path('register/', register, name='register'),
     path('recover_key/', recover_key, name='recover_key'),
     path('view-claims/', view_claims, name='view-claims'),
     path('transaction-confirmation/', transaction_confirmation, name='transaction_confirmation'),
+    path('decrypt-claim-data/', decrypt_claim, name='decrypt-claim-data'),
+
 
 ]

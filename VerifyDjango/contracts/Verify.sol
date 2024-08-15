@@ -7,26 +7,35 @@ contract Verify {
         string yearOfGraduation;
         string studentNumber;
         string fullName;
+        string ipfsHash;
         bool signed;
     }
 
     mapping(uint256 => ClaimData) public claims;
     uint256 public claimCount;
 
-    event ClaimCreated(uint256 indexed claimId, address indexed initiator, address indexed authority);
+    event ClaimCreated(uint256 indexed claimId, address indexed initiator, address indexed authority, string ipfsHash);
     event ClaimSigned(uint256 indexed claimId, address indexed authority);
 
-    function createClaim(address _requester, address _authority, string memory _yearOfGraduation, string memory _studentNumber, string memory _fullName) public {
+    function createClaim(
+        address _requester,
+        address _authority,
+        string memory _yearOfGraduation,
+        string memory _studentNumber,
+        string memory _fullName,
+        string memory _ipfsHash
+    ) public {
         claimCount++;
         claims[claimCount] = ClaimData({
-            requester: msg.sender,
+            requester: _requester,
             authority: _authority,
             yearOfGraduation: _yearOfGraduation,
             studentNumber: _studentNumber,
             fullName: _fullName,
+            ipfsHash: _ipfsHash,
             signed: false
         });
-        emit ClaimCreated(claimCount, msg.sender, _requester);
+        emit ClaimCreated(claimCount, _requester, _authority, _ipfsHash);
     }
 
     function signClaim(uint256 _claimId) public {
@@ -43,13 +52,13 @@ contract Verify {
         string memory yearOfGraduation,
         string memory studentNumber,
         string memory fullName,
+        string memory ipfsHash,
         bool signed
     ) {
         ClaimData storage claim = claims[_claimId];
         return (
             claim.requester, claim.authority, claim.yearOfGraduation,
-            claim.studentNumber, claim.fullName, claim.signed
+            claim.studentNumber, claim.fullName, claim.ipfsHash, claim.signed
         );
     }
-
 }

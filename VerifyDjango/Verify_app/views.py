@@ -5,6 +5,7 @@ from rest_framework.response import Response
 from rest_framework import status
 
 import requests
+import ast
 from web3 import Web3
 
 from django.shortcuts import render, redirect
@@ -18,7 +19,7 @@ from .forms import UserRegisterForm
 from .serializers import ClaimSerializer
 from .eth_utils import create_claim, sign_claim, get_claim, fund_account
 
-from .encryption_utils import encrypt_private_key, derive_key, decrypt_private_key
+from .encryption_utils import encrypt_private_key, derive_key, decrypt_private_key, encrypt_and_split, decrypt_with_shares
 
 from .exceptions import IPFSHashNotReturnedException
 
@@ -99,6 +100,20 @@ def create_claim(request):
         # Initialize the contract
         verify_contract_instance = web3.eth.contract(address=contract_address, abi=contract_abi)
 
+        # Encrypting data and getting key shares
+        data = f"{year_of_graduation},{student_number},{full_name}"
+        encrypted_data, shares = encrypt_and_split(data)
+
+        print("SHARES")
+        print(shares)
+
+        # Uploading to IPFS and getting hash back
+        from .web3_utils import upload_to_ipfs
+        IPFS_hash = upload_to_ipfs(encrypted_data)
+
+        print("IPFS_hash")
+        print(IPFS_hash)
+
         # Determine the type of user
         #if isinstance(request.user, Web3Account):
         if isinstance(request.user, CustomUser):
@@ -112,12 +127,13 @@ def create_claim(request):
                 _authority=wallet_address,
                 _yearOfGraduation=year_of_graduation,
                 _studentNumber=student_number,
-                _fullName=full_name
+                _fullName=full_name,
+                _ipfsHash=IPFS_hash
             )
             context = {
                 'transaction_data': transaction.build_transaction({
                     'chainId': 1337,  # Ganache
-                    'gas': 210000,
+                    'gas': 300000,
                     'gasPrice': web3.to_wei('50', 'gwei'),
                     'nonce': web3.eth.get_transaction_count(wallet_address),
                     'from': wallet_address
@@ -187,6 +203,33 @@ class SignClaimView(APIView):
 from django.shortcuts import render
 from django.http import JsonResponse
 
+
+def decrypt_claim(request):
+    if request.method == 'POST':
+        ipfs_hash = request.POST['ipfs_hash']
+        share1 = request.POST['share1']
+        share2 = request.POST['share2']
+
+        # Retrieve the encrypted data from IPFS
+        ipfs_url = f"http://127.0.0.1:8080/ipfs/{ipfs_hash}"
+        #response = requests.post(ipfs_url, params={'arg': ipfs_hash})
+        response = requests.get(ipfs_url)
+
+        if response.status_code == 200:
+            encrypted_data = response.text
+            share1 = ast.literal_eval(share1)
+            share2 = ast.literal_eval(share2)
+            shares = [share1, share2]
+
+            # Decrypt the data using the provided shares
+            decrypted_data = decrypt_with_shares(encrypted_data, shares)
+
+            # Render the decrypted data on the page
+            return render(request, 'decrypted_data.html', {'decrypted_data': decrypted_data})
+        else:
+            return render(request, 'decrypt_claim.html', {'error': 'Failed to retrieve data from IPFS'})
+
+    return render(request, 'decrypt_claim.html')
 
 #@csrf_exempt
 """def upload_ipfs_view(request):
@@ -303,7 +346,7 @@ cid = 'QmNnVARxwSwCiD5FT7f33cUN1ExtgxNwnk3vKcdyNiH5R9'
 
 class ListClaimsView(APIView):
     def get(self, request):
-        claim = get_claim(2)
+        claim = get_claim()
         return Response(claim)
 
     #queryset = Claim.objects.all()

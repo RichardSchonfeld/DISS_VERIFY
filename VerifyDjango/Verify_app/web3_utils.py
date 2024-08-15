@@ -1,6 +1,7 @@
 import json
 import string
 import random
+import requests
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth import login
@@ -74,3 +75,14 @@ def verify_signature(request):
         return JsonResponse({'success': True})
     else:
         return JsonResponse({'error': 'Signature verification failed'}, status=400)
+
+
+def upload_to_ipfs(encrypted_data):
+    ipfs_url = "http://127.0.0.1:5001/api/v0/add"
+    files = {'file': ('encrypted_data.txt', encrypted_data)}
+    response = requests.post(ipfs_url, files=files)
+
+    if response.status_code == 200:
+        return response.json()['Hash']
+    else:
+        raise Exception("Failed to upload to IPFS")

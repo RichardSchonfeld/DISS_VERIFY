@@ -62,13 +62,14 @@ def get_claim():
             'year_of_graduation': claim[2],
             'student_number': claim[3],
             'full_name': claim[4],
-            'signed': claim[5],
+            'ipfs_hash': claim[5],
+            'signed': claim[6],
         })
 
     return claims
 
 def fund_account(new_account_address):
-    preset_account_address = '0x8262eEdE53E5405910d2552263be913FE3270622'
+    preset_account_address = '0x0dAD17E4C8E3d3290073b69971B5b11988AAdc62'
     preset_private_key = os.getenv('FUND_TEST_PRIVATE_KEY')
 
     # Define the amount of Ether to send (in Wei)

@@ -1,5 +1,6 @@
 import base64
 import os
+import json
 
 from django.contrib.auth.hashers import PBKDF2PasswordHasher
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
@@ -7,6 +8,12 @@ from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import padding
+
+from Crypto.Cipher import AES
+from Crypto.Util.Padding import pad, unpad
+from Crypto.Random import get_random_bytes
+from Crypto.Protocol.SecretSharing import Shamir
+
 
 def derive_key_from_password(password, salt):
     hasher = PBKDF2PasswordHasher()
@@ -74,5 +81,47 @@ def decrypt_private_key(encrypted_private_key, password):
         return None
 
 
+# Function to encrypt data and generate Shamir's Secret Shares
+def encrypt_and_split(data):
+    # Generate AES key
+    key = get_random_bytes(16)
+    cipher = AES.new(key, AES.MODE_CBC)
+    ct_bytes = cipher.encrypt(pad(data.encode('utf-8'), AES.block_size))
+    iv = cipher.iv
+    encrypted_data = base64.b64encode(iv + ct_bytes).decode('utf-8')
 
-   # encrypted_private_key = encrypted_private_key + '=' * (-len(encrypted_private_key) % 4)
+    # Generate Shamir's Secret Shares (2-of-3 scheme)
+    shares = Shamir.split(2, 3, key)
+
+    write_shares_to_local_file(shares)
+
+    return encrypted_data, shares
+
+# Function to decrypt data using Shamir's Secret Shares
+def decrypt_with_shares(encrypted_data, shares):
+    key = Shamir.combine(shares)
+
+    encrypted_data_bytes = base64.b64decode(encrypted_data)
+    iv = encrypted_data_bytes[:16]
+    ct = encrypted_data_bytes[16:]
+    cipher = AES.new(key, AES.MODE_CBC, iv)
+
+    original_data = unpad(cipher.decrypt(ct), AES.block_size).decode('utf-8')
+
+    return original_data
+
+# Function to upload data to IPFS
+
+def write_shares_to_local_file(shares):
+    # Get the path to the user's desktop
+    from django.conf import settings
+    # Define the file name
+    file_path = os.path.join(settings.BASE_DIR, "shamir_keys.txt")
+
+    # Write the shares to the file
+    with open(file_path, 'w') as file:
+        file.write("Shamir Secret Shares:\n")
+        for index, share in enumerate(shares, 1):
+            file.write(f"Share {index}: {share}\n")
+
+    print(f"Shamir keys have been written to {file_path}")

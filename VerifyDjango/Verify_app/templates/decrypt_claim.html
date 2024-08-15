@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Decrypt Claim</title>
+</head>
+<body>
+    <h1>Decrypt Claim Data</h1>
+    <form method="POST">
+        {% csrf_token %}
+        <label for="ipfs_hash">IPFS Hash:</label>
+        <input type="text" id="ipfs_hash" name="ipfs_hash" required><br>
+
+        <label for="share1">Share 1:</label>
+        <input type="text" id="share1" name="share1" required><br>
+
+        <label for="share2">Share 2:</label>
+        <input type="text" id="share2" name="share2" required><br>
+
+        <label for="password">Password:</label>
+        <input type="password" id="password" name="password" required><br>
+
+        <button type="submit">Decrypt</button>
+    </form>
+    {% if error %}
+        <p style="color:red;">{{ error }}</p>
+    {% endif %}
+</body>
+</html>
