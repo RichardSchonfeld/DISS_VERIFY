@@ -8,6 +8,7 @@
     <h1>Create Claim</h1>
     <form method="POST" action="{% url 'create-claim' %}">
         {% csrf_token %}
+
         <label for="year_of_graduation">Year of Graduation:</label>
         <input type="text" id="year_of_graduation" name="year_of_graduation" required><br>
 
@@ -20,9 +21,16 @@
         <label for="password">Password:</label>
         <input type="password" id="password" name="password" required><br>
 
+        <label for="authority">Select Authority:</label>
+        <select id="authority" name="authority" required>
+            {% for authority in authorities %}
+                <option value="{{ authority.public_key }}">{{ authority.username }}</option>
+            {% endfor %}
+        </select><br>
+
         {% if user.web3account %}
-    <!-- If the user is a MetaMask user, include the wallet address input -->
-        <input type="hidden" id="wallet_address" name="wallet_address">
+            <!-- If the user is a MetaMask user, include the wallet address input -->
+            <input type="hidden" id="wallet_address" name="wallet_address">
         {% endif %}
 
         <button type="submit">Submit Claim</button>
@@ -31,7 +39,8 @@
     <!-- MetaMask users: Include MetaMask initialization script -->
     {% if user.web3account %}
         <script src="https://cdn.jsdelivr.net/gh/ethereum/web3.js@1.3.0/dist/web3.min.js"></script>
-        <script>        window.addEventListener('load', async () => {
+        <script>
+            window.addEventListener('load', async () => {
                 // Check if MetaMask is installed
                 if (typeof window.ethereum !== 'undefined') {
                     // Initialize Web3 instance
@@ -51,5 +60,3 @@
     {% endif %}
 </body>
 </html>
-
-

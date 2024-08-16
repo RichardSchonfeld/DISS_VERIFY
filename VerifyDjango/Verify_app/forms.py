@@ -1,7 +1,7 @@
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
-from .models import CustomUser
+from .models import CustomUser, KeyFragment
 
 class UserRegisterForm(UserCreationForm):
     email = forms.EmailField()
@@ -15,3 +15,8 @@ class UserRegisterForm(UserCreationForm):
         if CustomUser.objects.filter(email=email).exists():
             raise forms.ValidationError('Email already registered')
         return email
+
+
+### Database Operations
+def store_key_fragment(user, fragmnet_data, ipfs_hash):
+    KeyFragment.objects.create(user=user, fragment=fragmnet_data, ipfs_hash=ipfs_hash)

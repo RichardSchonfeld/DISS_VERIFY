@@ -1,6 +1,8 @@
 
 A trusted Approach for Decentralised and Privacy-Preserving Identity Management [source](https://ieeexplore.ieee.org/abstract/document/9495805)
 
+Blockchain Credential repository https://arxiv.org/pdf/1904.00315
+
 
 
 
@@ -65,3 +67,29 @@ To address your concerns about privacy and the possibility of sensitive informat
 - **Anonymous Credential Systems** offer an additional layer of privacy by allowing entities to verify or sign credentials without fully understanding or exposing the content.
 
 These approaches help mitigate the risk of unwanted exposure in a system that manages sensitive information like employment history or other affiliations, while still maintaining the integrity and verifiability of the information when necessary.
+
+
+# Shamir approaches
+### 1. **Direct Distribution to Stakeholders**
+
+- **How:** Each share is directly given to the user (via MetaMask or email), the authority (university), and the dApp (smart contract).
+- **Pros:** Simple and secure.
+- **Cons:** Risk if any party loses their share.
+
+### 2. **Multi-Signature Contract**
+
+- **How:** A smart contract holds the shares, requiring both user and authority to sign off before releasing them.
+- **Pros:** High security and transparency.
+- **Cons:** More complex and higher gas costs.
+
+### 3. **Decentralized Storage with Redundancy**
+
+- **How:** Store shares in decentralized storage like IPFS, with multiple nodes for redundancy.
+- **Pros:** Decentralized and resilient.
+- **Cons:** Can be slower and more complex.
+
+### 4. **Threshold-Based DAO**
+
+- **How:** A DAO holds the shares and releases them only after a majority vote.
+- **Pros:** Highly decentralized and secure.
+- **Cons:** Complex governance and coordination required.

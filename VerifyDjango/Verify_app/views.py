@@ -87,6 +87,7 @@ def create_claim(request):
         year_of_graduation = request.POST['year_of_graduation']
         student_number = request.POST['student_number']
         full_name = request.POST['full_name']
+        authority_public_key = request.POST['authority']
 
         import json
         # Load contract ABI and address
@@ -115,6 +116,11 @@ def create_claim(request):
         print(IPFS_hash)
 
         user_profile = request.user
+
+        # Save shamir fragment and IPFS hash to user profile
+        from .forms import store_key_fragment
+        store_key_fragment(user_profile, shares, IPFS_hash)
+
         # Determine the type of user
         #if isinstance(request.user, Web3Account):
         if user_profile.is_web3_user:
@@ -124,7 +130,7 @@ def create_claim(request):
             # Prepare the transaction data for MetaMask
             transaction = verify_contract_instance.functions.createClaim(
                 _requester=wallet_address,
-                _authority=wallet_address,
+                _authority=authority_public_key,
                 _yearOfGraduation=year_of_graduation,
                 _studentNumber=student_number,
                 _fullName=full_name,
@@ -152,7 +158,7 @@ def create_claim(request):
 
             transaction = verify_contract_instance.functions.createClaim(
                 _requester=wallet_address,
-                _authority=wallet_address,
+                _authority=authority_public_key,
                 _yearOfGraduation=year_of_graduation,
                 _studentNumber=student_number,
                 _fullName=full_name,
@@ -178,7 +184,8 @@ def create_claim(request):
 
             return render(request, 'submit_confirmation.html', context)
     else:
-        return render(request, 'create_claim.html')
+        authorities = CustomUser.objects.filter(is_authority=True)
+        return render(request, 'create_claim.html', {'authorities': authorities})
 
 def view_claims(request):
     claims = get_claim()

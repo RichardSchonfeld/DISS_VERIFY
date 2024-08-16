@@ -1,6 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import User, AbstractUser
 from django.core.exceptions import ValidationError
+from django.conf import settings
 
 #class CustomUser(AbstractUser):
 #    eth_address = models.CharField(max_length=42, unique=True, blank=True, null=True)
@@ -51,8 +52,9 @@ class CustomUser(AbstractUser):
     email = models.EmailField(null=True, unique=True, blank=True)
     public_key = models.CharField(max_length=42, unique=True, blank=True, null=True)
     encrypted_private_key = models.TextField(blank=True, null=True)
-    encrypted_key_fragment = models.TextField(blank=True, null=True)
     is_web3_user = models.BooleanField(default=False)  # Flag to distinguish between Django and Web3 users
+    is_authority = models.BooleanField(default=False)
+    institution_name = models.CharField(max_length=250, unique=True, blank=True, null=True)
 
     USERNAME_FIELD = 'username'  # Use 'username' for Web3 users and 'email' for Django users
     REQUIRED_FIELDS = ['email']
@@ -67,6 +69,8 @@ class CustomUser(AbstractUser):
         # Ensure public key is required for Web3 users
         if self.is_web3_user and not self.public_key:
             raise ValidationError("Public key is required for Web3 users.")
+        if self.is_authority and not self.institution_name:
+            raise ValidationError("Institution name is required for Authority.")
 
     def save(self, *args, **kwargs):
         if self.is_web3_user:
@@ -76,7 +80,23 @@ class CustomUser(AbstractUser):
             if not self.email:
                 raise ValueError("Email is required for Django users.")
             self.username = self.email
+
+        if self.is_authority:
+            if not self.institution_name:
+                raise ValueError("Institution name is required for Authority.")
+            self.username = self.institution_name
         super().save(*args, **kwargs)
+
+
+class KeyFragment(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='key_fragment')
+    ipfs_hash = models.CharField(max_length=255, blank=False, null=False)
+    fragment = models.TextField(max_length=255, blank=False, null=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Fragment for {self.user.username}"
+
 
 class Claim(models.Model):
     requester = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
