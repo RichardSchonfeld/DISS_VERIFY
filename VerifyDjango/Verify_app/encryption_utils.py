@@ -32,6 +32,8 @@ def derive_key(password, salt):
     )
     return kdf.derive(password_bytes)
 
+#### PASSWORDS IN DJANGO DEFAULTED TO PBKDF2 REMOVE DERIVE_KEY AND EXTEND ####
+
 def encrypt_private_key(private_key, password):
     salt = os.urandom(16)
     key = derive_key(password, salt)

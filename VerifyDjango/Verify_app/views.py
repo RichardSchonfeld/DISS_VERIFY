@@ -1,5 +1,11 @@
+import hashlib
+import json
+
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.asymmetric import padding
 from django.views.decorators.csrf import csrf_exempt
 from django.conf import settings
+from eth_account.messages import encode_defunct
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
@@ -13,8 +19,9 @@ from django.contrib.auth.models import User
 from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
 
-from .models import Claim, CustomUser
+from .models import Claim, CustomUser, Certificate
 from .forms import UserRegisterForm
+from .ipfs_functions import get_ipfs_raw_data, parse_json_decrypted_ipfs_data, get_ipfs_decrypted_data
 
 from .serializers import ClaimSerializer
 from .eth_utils import create_claim, sign_claim, get_claim, fund_account
@@ -191,6 +198,107 @@ def view_claims(request):
     claims = get_claim()
     return render(request, 'view_claims.html', {'claims': claims})
 
+
+#### DOUBLE CHECK IF CSRF EXEMPT IS OKAY HERE ####
+@csrf_exempt
+def sign_certificate(request):
+    """Handle certificate signing and storage."""
+    if request.method == 'POST':
+        # Get POST data
+        ipfs_hash = request.POST.get('ipfs_hash')
+        share1 = request.POST.get('share1')
+        share2 = request.POST.get('share2')
+
+        try:
+            # Decrypt IPFS data
+            decrypted_data = get_ipfs_decrypted_data(ipfs_hash, share1, share2)
+
+            # Parse the decrypted data to form the certificate structure
+            certificate_data = parse_json_decrypted_ipfs_data(decrypted_data)
+
+            # Prepare certificate data
+            certificate_json = json.dumps(certificate_data)
+            certificate_hash = hashlib.sha256(certificate_json.encode()).hexdigest()
+
+            # Encode the hash as an Ethereum message
+            message = encode_defunct(hexstr=certificate_hash)
+
+            # Return the certificate data and the encoded message hash for signing
+            return JsonResponse({
+                "certificate_hash": Web3.to_hex(message.body),  # This ensures the correct Ethereum-prefixed hash
+                "certificate_data": certificate_data
+            })
+
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=500)
+
+    # Render the signing page for GET requests
+    return render(request, 'sign_certificate.html')
+
+
+@csrf_exempt
+def store_signed_certificate(request):
+    """Store the signed certificate in the database."""
+    if request.method == 'POST':
+        data = json.loads(request.body)
+        certificate_data = data.get('certificate')
+        certificate_hash = data.get('certificate_hash')
+        signature = data.get('signature')
+        user = request.user  # Assuming the user is authenticated
+
+        # Save the signed certificate to the database
+        certificate = Certificate.objects.create(
+            user=user,
+            certificate_data=certificate_data,
+            certificate_hash=certificate_hash,
+            signature=signature
+        )
+
+        return JsonResponse({'status': 'success', 'message': 'Certificate signed and stored successfully.', 'certificate_id': certificate.id})
+
+    return JsonResponse({'status': 'error', 'message': 'Invalid request method.'}, status=405)
+
+
+def verify_signature(request):
+    """Verify the signature of a certificate based on user input."""
+    if request.method == 'POST':
+        public_key = request.POST.get('public_key')
+        certificate_hash = request.POST.get('certificate_hash')
+        signature = request.POST.get('signature')
+
+        try:
+            # Create a Web3 instance
+            web3 = Web3()
+
+            # Encode the hash as an Ethereum message
+            message = encode_defunct(hexstr=certificate_hash)
+
+            # Recover the signer's address from the signature
+            recovered_address = web3.eth.account.recover_message(
+                message,
+                signature=signature
+            )
+
+            # Check if the recovered address matches the provided public key
+            if recovered_address.lower() == public_key.lower():
+                return render(request, 'verify_signature.html', {
+                    'result': 'Success: Signature is valid and matches the public key.',
+                    'result_color': 'green'
+                })
+            else:
+                return render(request, 'verify_signature.html', {
+                    'result': 'Error: Signature does not match the public key.',
+                    'result_color': 'red'
+                })
+        except Exception as e:
+            return render(request, 'verify_signature.html', {
+                'result': f'Error: {str(e)}',
+                'result_color': 'red'
+            })
+
+    # Render the form page for GET requests
+    return render(request, 'verify_signature.html')
+
 class SignClaimView(APIView):
     def post(self, request):
         data = request.data
@@ -238,117 +346,8 @@ def decrypt_claim(request):
 
     return render(request, 'decrypt_claim.html')
 
-#@csrf_exempt
-"""def upload_ipfs_view(request):
-    if request.method == 'POST':
-        # Handle file upload
-        uploaded_file = request.FILES.get('file')
-        if uploaded_file:
-            try:
-                # Connect to IPFS running on localhost
-                client = ipfshttpclient.connect('/ip4/127.0.0.1/tcp/5001')
-
-                # Add file to IPFS
-                result = client.add(uploaded_file)
-                cid = result['Hash']
-
-                # Return the CID of the uploaded file
-                return JsonResponse({'cid': cid})
-            except Exception as e:
-                return JsonResponse({'error': str(e)}, status=500)
-        else:
-            return JsonResponse({'error': 'No file provided'}, status=400)
-
-    # For GET request, render the upload page
-    return render(request, 'upload-ipfs.html')"""
-
-@csrf_exempt
-def upload_ipfs_view(request):
-    """
-        ------- ORIGINAL IMPLEMENTATION FOR INFURA -------
-            --- may be useful if I migrate to have it all at once place ---
-    if request.method == 'POST':
-        uploaded_file = request.FILES.get('file')
-        endpoint = "https://ipfs.infura.io:5001/api/v0/add"
-        api_key = settings.INFURA_API_KEY
-        api_secret = settings.INFURA_API_SECRET
-        if uploaded_file:
-            try:
-                files = {
-                    'file': (uploaded_file.name, uploaded_file.read()),
-                }
-
-                response = requests.post(
-                    endpoint,
-                    files=files,
-                    auth = (api_key, api_secret)
-                )
-
-                if response.status_code == 200:
-                    result = response.json()
-                    cid = result['Hash']
-                    return JsonResponse({'cid': cid})
-                else:
-                    return JsonResponse({'error': response.text}, status=response.status_code)
-            except Exception as e:
-                return JsonResponse({'error': str(e)}, status=500)
-        else:
-            return JsonResponse({'error': 'No file provided'}, status=500)"""
-
-    if request.method == 'POST':
-        uploaded_file = request.FILES.get('file')
-        ipfs_url = "http://127.0.0.1:5001/api/v0"
-        ipfs_endpoint_add = "/add"
-
-        check_if_pinned("QmNnVARxwSwCiD5FT7f33cUN1ExtgxNwnk3vKcdyNiH5R9")
-
-        if uploaded_file:
-            files = {'file': uploaded_file}
-            add_url = ipfs_url + ipfs_endpoint_add
-            response = requests.post(add_url, files=files)
-
-            if response.status_code == 200:
-                result = response.json()
-                if 'Hash' not in result:
-                    raise IPFSHashNotReturnedException
-
-                cid = result.get('Hash')
-                print("File uploaded successfully, hash: " + cid)
-
-                print("PINNING")
-                ipfs_endpoint_pin = f"/pin/add?arg={cid}"
-                pin_url = ipfs_url + ipfs_endpoint_pin
-                pin_response = requests.post(pin_url)
-
-                if pin_response.status_code == 200:
-                    print(f"File {cid} pinned successfully")
-                else:
-                    print("Error pinning file: ", response.status_code, response.text)
-
-                return JsonResponse(result)
-            else:
-                return JsonResponse({'error': response.text}, status=response.status_code)
 
 
-    return render(request, 'upload-ipfs.html')
-
-import requests
-
-def check_if_pinned(cid):
-    url = f'http://127.0.0.1:5001/api/v0/pin/ls?arg={cid}'
-    response = requests.post(url)
-    if response.status_code == 200:
-        result = response.json()
-        if cid in result.get('Keys', {}):
-            print(f"File {cid} is pinned.")
-        else:
-            print(f"File {cid} is not pinned.")
-    else:
-        print(f"Error checking pin status: {response.status_code}, {response.text}")
-
-# Check if file is pinned
-cid = 'QmNnVARxwSwCiD5FT7f33cUN1ExtgxNwnk3vKcdyNiH5R9'
-#check_if_pinned(cid)
 
 
 class ListClaimsView(APIView):

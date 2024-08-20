@@ -3,6 +3,7 @@ A trusted Approach for Decentralised and Privacy-Preserving Identity Management 
 
 Blockchain Credential repository https://arxiv.org/pdf/1904.00315
 
+-
 
 
 
@@ -15,7 +16,8 @@ Key points:
 Related otherwise:
 - Why ethereum? We already have a blockchain! BTC!
 
-
+### Make transactions all client-side?
+- Would help with storage problems, password and Sk handling
 
 # GPT future -proofing security
 

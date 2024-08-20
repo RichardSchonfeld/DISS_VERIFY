@@ -110,3 +110,15 @@ class Claim(models.Model):
 
     def __str__(self):
         return f'Claim {self.id} by {self.requester}'
+
+from django.db import models
+
+class Certificate(models.Model):
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)  # Assuming you have a CustomUser model
+    certificate_data = models.JSONField()  # Store the certificate data as a JSON object
+    certificate_hash = models.CharField(max_length=64)  # SHA-256 hash is 64 characters long
+    signature = models.TextField()  # Store the signature as text
+    created_at = models.DateTimeField(auto_now_add=True)  # Automatically set the time when created
+
+    def __str__(self):
+        return f"Certificate for {self.user.email or self.user.public_key}"
