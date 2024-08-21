@@ -72,7 +72,6 @@
                     const web3 = new Web3();
                     // Decrypt the private key using the password
                     const privateKey = await decryptPrivateKey(encryptedPrivateKey, password);
-                    console.log("Decrypted Private Key:", privateKey);
 
                     // Sign the transaction
                     const signedTransaction = await web3.eth.accounts.signTransaction(transactionData, privateKey);

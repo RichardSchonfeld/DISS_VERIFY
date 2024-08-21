@@ -18,6 +18,12 @@
         <label for="share2">Share 2:</label>
         <input type="text" id="share2" name="share2" required><br><br>
 
+        {% if encrypted_private_key %}
+            <label for="password">Enter your password to decrypt your private key:</label>
+            <input type="password" id="password" name="password" required>
+            <input type="hidden" id="encrypted_private_key" value="{{encrypted_private_key}}">
+        {% endif %}
+
         <button type="submit">Decrypt and Prepare</button>
     </form>
 
@@ -45,33 +51,38 @@
 
                 // Now, handle the signing using MetaMask or decrypted private key
                 document.getElementById('sign-button').addEventListener('click', async () => {
-                    let useMetaMask = confirm('Do you want to sign using MetaMask?');
+                    const isWeb3User = {{ user.is_web3_user|lower }};
 
-                    if (useMetaMask) {
-                        const web3 = new Web3(window.ethereum);
-                        await ethereum.request({ method: 'eth_requestAccounts' });
-                        const account = (await web3.eth.getAccounts())[0];
+                    try {
+                        if (isWeb3User) {
+                            const web3 = new Web3(window.ethereum);
+                            await ethereum.request({ method: 'eth_requestAccounts' });
+                            const account = (await web3.eth.getAccounts())[0];
 
-                        // Sign the hash using MetaMask
-                        web3.eth.personal.sign(data.certificate_hash, account, (err, signature) => {
-                            if (err) {
-                                console.error('MetaMask signing failed', err);
-                                return;
+                            // Sign the hash using MetaMask
+                            web3.eth.personal.sign(data.certificate_hash, account, (err, signature) => {
+                                if (err) {
+                                    console.error('MetaMask signing failed', err);
+                                    return;
+                                }
+                                submitSignature(signature, data.certificate_data, data.certificate_hash);
+                            });
+                        } else {
+                            // Decrypt the private key and sign the certificate hash
+                            const encryptedPrivateKey = document.getElementById('encrypted_private_key').value;
+                            const password = document.getElementById('password').value;
+                            const decryptedPrivateKey = await decryptPrivateKey(encryptedPrivateKey, password);
+
+
+                                const web3 = new Web3();
+                                const privateKeyObject = web3.eth.accounts.privateKeyToAccount(decryptedPrivateKey);
+                                const signature = privateKeyObject.sign(data.certificate_hash);
+
+                                submitSignature(signature.signature, data.certificate_data, data.certificate_hash);
                             }
-                            submitSignature(signature, data.certificate_data, data.certificate_hash);
-                        });
-                    } else {
-                        // Decrypt the private key and sign the certificate hash
-                        const password = prompt("Enter your password to decrypt your private key:");
-                        const encryptedPrivateKey = prompt("Paste your encrypted private key:");
-                        const decryptedPrivateKey = await decryptPrivateKey(encryptedPrivateKey, password);
-
-                        const web3 = new Web3();
-                        const privateKeyObject = web3.eth.accounts.privateKeyToAccount(decryptedPrivateKey);
-                        const signature = privateKeyObject.sign(data.certificate_hash);
-
-                        submitSignature(signature.signature, data.certificate_data, data.certificate_hash);
-                    }
+                    } catch (error) {
+                            console.error('Submit signature failed: ', error);                        }
+                            alert('Digital signing failed. Please try again.');
                 });
             } else {
                 alert('Failed to decrypt data.');
