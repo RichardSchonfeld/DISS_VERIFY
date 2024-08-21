@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Submit Claim</title>
+    {% load static %}
+    <script src="{% static 'js/encryption.js' %}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js"></script>
+</head>
+<body>
+    <h1>Submit Your Claim</h1>
+
+    <form id="claimForm" onsubmit="signAndSubmitClaim(); return false;">
+        {% csrf_token %}
+
+        <!-- Hidden field to hold the transaction data -->
+        <input type="hidden" id="transaction_data" value='{{ transaction_data|escapejs }}'>
+
+        <!-- Django user specific fields -->
+        {% if encrypted_private_key %}
+            <label for="password">Enter your password to decrypt your private key:</label>
+            <input type="password" id="password" name="password" required>
+            <input type="hidden" id="encrypted_private_key" value="{{ encrypted_private_key }}">
+        {% endif %}
+
+        <button type="submit">Sign and Submit Claim</button>
+    </form>
+
+<script>
+    async function signAndSubmitClaim() {
+        try {
+            const isWeb3User = {{ user.is_web3_user|lower }}; // This is True for MetaMask users and False for Django users
+            console.log("isWeb3User:", isWeb3User);
+
+            // Prepare the transaction data
+            let transactionData = document.getElementById('transaction_data').value;
+            console.log("Raw Transaction Data:", transactionData);
+
+            // Fix JSON parsing issue by ensuring proper formatting
+            transactionData = JSON.parse(transactionData.replace(/\\u0022/g, '"'));
+            console.log("Parsed Transaction Data:", transactionData);
+
+            if (isWeb3User) {
+                // MetaMask User Flow
+                const web3 = new Web3(window.ethereum);
+                await ethereum.request({ method: 'eth_requestAccounts' });
+
+                const accounts = await web3.eth.getAccounts();
+                const account = accounts[0];
+
+                // Send the transaction directly with MetaMask (no private key involved here)
+                const txnParams = {
+                    from: account,
+                    to: transactionData.to, // Ensure to include the correct 'to' address in the transaction data
+                    gas: transactionData.gas,
+                    gasPrice: transactionData.gasPrice,
+                    data: transactionData.data,
+                    value: transactionData.value
+                };
+
+                // Sign and send the transaction with MetaMask
+                const txnHash = await web3.eth.sendTransaction(txnParams);
+
+                // Submit the transaction hash to the server
+                await submitSignedTransaction(txnHash.transactionHash);
+            } else {
+                // Django User Flow
+                const encryptedPrivateKey = document.getElementById('encrypted_private_key').value;
+                const password = document.getElementById('password').value;
+
+                try {
+                    const web3 = new Web3();
+                    // Decrypt the private key using the password
+                    const privateKey = await decryptPrivateKey(encryptedPrivateKey, password);
+                    console.log("Decrypted Private Key:", privateKey);
+
+                    // Sign the transaction
+                    const signedTransaction = await web3.eth.accounts.signTransaction(transactionData, privateKey);
+
+                    // Submit the signed transaction to the server
+                    await submitSignedTransaction(signedTransaction.rawTransaction);
+                } catch (error) {
+                    console.error('Private key transaction signing failed:', error);
+                    alert('Transaction failed. Please try again.');
+                }
+            }
+        } catch (error) {
+            console.error('Error in signAndSubmitClaim:', error);
+        }
+    }
+
+    async function submitSignedTransaction(transactionHashOrRawTransaction) {
+        try {
+            const isWeb3User = {{ user.is_web3_user|lower }};
+            const payload = isWeb3User ? { txnHash: transactionHashOrRawTransaction } : { signedTransaction: transactionHashOrRawTransaction };
+
+            const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+            const response = await fetch('/create-claim/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrftoken
+                },
+                body: JSON.stringify(payload),
+            });
+
+            if (response.ok) {
+                alert('Transaction submitted successfully!');
+                window.location.href = '/';
+            } else {
+                const errorData = await response.json();
+                console.error('Transaction submission failed:', errorData.error);
+                alert(`Transaction submission failed: ${errorData.error}`);
+            }
+        } catch (error) {
+            console.error('Error in submitSignedTransaction:', error);
+            alert(`An unexpected error occurred: ${error.message}`);
+        }
+    }
+</script>
+</body>
+</html>

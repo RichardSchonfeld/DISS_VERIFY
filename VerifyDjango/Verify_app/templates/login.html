@@ -24,9 +24,7 @@
 
             // Request a nonce from the backend
             const nonceResponse = await fetch(`/web3/nonce/?address=${account}`);
-            console.log("OBTAINING NONCE")
             const { nonce } = await nonceResponse.json();
-            console.log("NONCE OBTAINED")
             console.log(nonce)
 
             // Sign the nonce with MetaMask

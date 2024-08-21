@@ -1,8 +1,65 @@
-{% block content %}
-  <h2>Register</h2>
-  <form method="POST">
-    {% csrf_token %}
-    {{ form.as_p }}
-    <button type="submit">Sign Up</button>
-  </form>
-{% endblock %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Register</title>
+    {%  load static %}
+
+    <script src="https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js"></script>
+    <script src="{% static 'js/encryption.js' %}"></script>
+</head>
+<body>
+    <h1>Register</h1>
+    <form id="registerForm" method="post" onsubmit="event.preventDefault(); registerUser();">
+        {% csrf_token %}
+        <div>
+            <label for="email">Email:</label>
+            <input type="email" id="email" name="email" required>
+        </div>
+        <div>
+            <label for="password1">Password:</label>
+            <input type="password" id="password1" name="password1" required>
+        </div>
+        <div>
+            <label for="password2">Confirm Password:</label>
+            <input type="password" id="password2" name="password2" required>
+        </div>
+        <input type="hidden" id="public_key" name="public_key">
+        <input type="hidden" id="encrypted_private_key" name="encrypted_private_key">
+        <button type="submit">Register</button>
+    </form>
+
+    <script>
+        async function registerUser() {
+            const form = document.getElementById('registerForm');
+            const formData = new FormData(form);
+
+            // Generate Ethereum account
+            const web3 = new Web3();
+            const account = web3.eth.accounts.create();
+            const eth_address = account.address;
+            const private_key = account.privateKey;
+
+            // Encrypt the private key using the password
+            const password = document.getElementById('password1').value;
+            const encrypted_private_key = await encryptPrivateKey(private_key, password);
+
+            // Update the hidden fields with the generated data
+            formData.append('public_key', eth_address);
+            formData.append('encrypted_private_key', encrypted_private_key);
+
+            // Submit the form via fetch API
+            const response = await fetch(form.action, {
+                method: 'POST',
+                body: formData,
+            });
+
+            if (response.ok) {
+                window.location.href = "/";
+            } else {
+                alert('Registration failed');
+            }
+        }
+    </script>
+</body>
+</html>

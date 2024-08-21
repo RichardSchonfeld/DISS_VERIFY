@@ -42,32 +42,19 @@ def register(request):
     if request.method == 'POST':
         form = UserRegisterForm(request.POST)
         if form.is_valid():
-            user = form.save()
-            password = form.cleaned_data.get('password1')
-
-            # Generate Ethereum account
-            web3 = Web3()
-            account = web3.eth.account.create()
-            eth_address = account.address
-            private_key = account._private_key.hex()
-            print("PRIV KEY")
-            print(private_key)
-            # Encrypt the private key
-            encrypted_private_key = encrypt_private_key(private_key, password)
-
-            # Save the Ethereum address and encrypted private key to the user profile
-            user.public_key = eth_address
-            user.encrypted_private_key = encrypted_private_key
+            user = form.save(commit=False)
+            user.public_key = request.POST['public_key']
+            user.encrypted_private_key = request.POST['encrypted_private_key']
             user.save()
 
-            fund_account(eth_address)
+            ### ----- TEMPORARY user fund initial ----- ###
+            fund_account(user.public_key)
+            ### ----- END TEMP ----- ###
 
-            login(request, user)
             return redirect('index')
     else:
         form = UserRegisterForm()
     return render(request, 'register.html', {'form': form})
-
 
 @login_required
 def recover_key(request):
@@ -89,7 +76,79 @@ def transaction_confirmation(request):
     return render(request, 'transaction_confirmation.html', {'txn_hash': txn_hash})
 
 @login_required
+@csrf_exempt
 def create_claim(request):
+    if request.method == 'POST':
+        data = request.body.decode('utf-8')
+        web3 = Web3(Web3.HTTPProvider('http://localhost:8545'))
+
+        if 'signedTransaction' in data:
+            # Django User Flow: Send the signed transaction to the blockchain
+            try:
+                data = json.loads(data)
+                txn_hash = web3.eth.send_raw_transaction(data['signedTransaction'])
+                return JsonResponse({'txn_hash': txn_hash.hex()})
+            except Exception as e:
+                return JsonResponse({'error': str(e)}, status=500)
+
+        elif 'txnHash' in data:
+            # MetaMask User Flow: Transaction already sent, just log the transaction hash
+            data = json.loads(data)
+            txn_hash = data['txnHash']
+            return JsonResponse({'txn_hash': txn_hash})
+
+        else:
+            # Handle claim creation and transaction preparation
+            year_of_graduation = request.POST.get('year_of_graduation')
+            student_number = request.POST.get('student_number')
+            full_name = request.POST.get('full_name')
+            authority_public_key = request.POST.get('authority')
+
+            # Load the contract ABI and address
+            with open('build/contracts/Verify.json') as f:
+                contract_data = json.load(f)
+                contract_abi = contract_data['abi']
+            contract_address = settings.CONTRACT_ADDRESS
+            verify_contract_instance = web3.eth.contract(address=contract_address, abi=contract_abi)
+
+            # Encrypting data and getting key shares
+            data = f"{year_of_graduation},{student_number},{full_name}"
+            encrypted_data, shares = encrypt_and_split(data)
+
+            # Uploading to IPFS and getting hash back
+            from .web3_utils import upload_to_ipfs
+            IPFS_hash = upload_to_ipfs(encrypted_data)
+
+            user_profile = request.user
+            wallet_address = Web3.to_checksum_address(user_profile.public_key)
+
+            # Prepare the transaction data
+            transaction = verify_contract_instance.functions.createClaim(
+                _requester=wallet_address,
+                _authority=authority_public_key,
+                _yearOfGraduation=year_of_graduation,
+                _studentNumber=student_number,
+                _fullName=full_name,
+                _ipfsHash=IPFS_hash
+            ).build_transaction({
+                'chainId': 1337,  # Ganache
+                'gas': 300000,
+                'gasPrice': web3.to_wei('50', 'gwei'),
+                'nonce': web3.eth.get_transaction_count(wallet_address),
+            })
+
+            # Render the signing page with the transaction data
+            context = {
+                'transaction_data': json.dumps(transaction),
+                'encrypted_private_key': user_profile.encrypted_private_key if not user_profile.is_web3_user else None,
+            }
+            return render(request, 'submit_claim.html', context)
+    else:
+        authorities = CustomUser.objects.filter(is_authority=True)
+        return render(request, 'create_claim.html', {'authorities': authorities})
+
+@login_required
+def create_claim_dep(request):
     if request.method == 'POST':
         year_of_graduation = request.POST['year_of_graduation']
         student_number = request.POST['student_number']

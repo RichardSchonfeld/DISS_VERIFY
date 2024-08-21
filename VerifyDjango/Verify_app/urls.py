@@ -1,6 +1,6 @@
 from django.urls import path
 from .views import *
-from .web3_utils import get_nonce
+from .web3_utils import get_nonce, verify_signature_login_metamask
 
 urlpatterns = [
     path('', index, name='index'),
@@ -8,7 +8,7 @@ urlpatterns = [
     path('list-claims/', ListClaimsView.as_view(), name='list-claims'),
     path('login/', login_view, name='login_view'),
     path('web3/nonce/', get_nonce, name='get_nonce'),
-    path('web3/verify/', verify_signature, name='verify_signature'),
+    path('web3/verify/', verify_signature_login_metamask, name='verify_signature'),
     path('register/', register, name='register'),
     path('recover_key/', recover_key, name='recover_key'),
     path('view-claims/', view_claims, name='view-claims'),
