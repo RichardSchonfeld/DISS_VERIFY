@@ -34,8 +34,8 @@
     <h1>Verify Certificate Signature</h1>
     <form method="POST" action="">
         {% csrf_token %}
-        <label for="public_key">Public Key:</label><br>
-        <input type="text" id="public_key" name="public_key" required><br><br>
+        <label for="address">Address:</label><br>
+        <input type="text" id="address" name="address" required><br><br>
 
         <label for="certificate_hash">Certificate Hash:</label><br>
         <input type="text" id="certificate_hash" name="certificate_hash" required><br><br>

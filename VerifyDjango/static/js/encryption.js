@@ -77,3 +77,37 @@ async function decryptPrivateKey(encryptedPrivateKey, password) {
             throw error;
         }
     }
+
+/*
+async function decryptFragment(encryptedFragment, privateKey, password) {
+    try {
+        const decryptedPrivateKey = await decryptPrivateKey(privateKey, password);
+
+        // Now decrypt the fragment with the user's decrypted private key
+        const cryptoKey = await window.crypto.subtle.importKey(
+            "pkcs8",
+            new Uint8Array(decryptedPrivateKey),  // Your decrypted private key as Uint8Array
+            { name: "RSA-OAEP", hash: "SHA-256" },
+            true,
+            ["decrypt"]
+        );
+
+        const decryptedFragment = await window.crypto.subtle.decrypt(
+            {
+                name: "RSA-OAEP"
+            },
+            cryptoKey,
+            encryptedFragment
+        );
+
+        return new TextDecoder().decode(decryptedFragment);
+    } catch (error) {
+        console.error('Error decrypting fragment:', error);
+        throw error;
+    }
+}
+
+// Usage example in your existing workflow:
+const decryptedFragment = await decryptFragment(encryptedFragmentFromBackend, userEncryptedPrivateKey, userPassword);
+
+ */

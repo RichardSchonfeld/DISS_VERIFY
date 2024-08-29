@@ -16,10 +16,12 @@ from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
 
 from .models import Claim, CustomUser, Certificate
-from .forms import UserRegisterForm
+from .forms import UserRegisterForm, store_key_fragment, get_user_by_address
 from .ipfs_functions import get_ipfs_raw_data, parse_json_decrypted_ipfs_data, get_ipfs_decrypted_data
 from .eth_utils import create_claim, sign_claim, get_claim, fund_account
-from .encryption_utils import encrypt_private_key, derive_key, decrypt_private_key, encrypt_and_split, decrypt_with_shares
+from .encryption_utils import encrypt_private_key, derive_key, decrypt_private_key, encrypt_and_split, \
+    decrypt_with_shares, encrypt_with_public_key
+from .web3_utils import upload_to_ipfs
 
 
 def index(request):
@@ -34,18 +36,22 @@ def register(request):
         form = UserRegisterForm(request.POST)
         if form.is_valid():
             user = form.save(commit=False)
-            user.public_key = request.POST['public_key']
+            user.address = request.POST['address']
             user.encrypted_private_key = request.POST['encrypted_private_key']
             user.save()
 
             ### ----- TEMPORARY user fund initial ----- ###
-            fund_account(user.public_key)
+            fund_account(user.address)
             ### ----- END TEMP ----- ###
 
             return redirect('index')
+        else:
+            # If the form is not valid, return the form with errors
+            return render(request, 'register.html', {'form_errors': form.errors})
     else:
         form = UserRegisterForm()
     return render(request, 'register.html', {'form': form})
+
 
 def transaction_confirmation(request):
     txn_hash = request.GET.get('txn_hash')
@@ -78,7 +84,7 @@ def create_claim(request):
             year_of_graduation = request.POST.get('year_of_graduation')
             student_number = request.POST.get('student_number')
             full_name = request.POST.get('full_name')
-            authority_public_key = request.POST.get('authority')
+            authority_address = request.POST.get('authority')
 
             # Load the contract ABI and address
             with open('build/contracts/Verify.json') as f:
@@ -91,17 +97,41 @@ def create_claim(request):
             data = f"{year_of_graduation},{student_number},{full_name}"
             encrypted_data, shares = encrypt_and_split(data)
 
+            user_profile = request.user
             # Uploading to IPFS and getting hash back
-            from .web3_utils import upload_to_ipfs
             IPFS_hash = upload_to_ipfs(encrypted_data)
 
-            user_profile = request.user
-            wallet_address = Web3.to_checksum_address(user_profile.public_key)
+            # Distributing keys
+            store_key_fragment(user_profile, shares, IPFS_hash)
+
+            # First the requester (claimant)
+            #claimant_share = encrypt_with_public_key(repr(shares[0]), user_profile.public_key)
+            # Then the server (Dapp)
+            #server_share = encrypt_with_public_key(repr(shares[0]), settings.PUBLIC_KEY)
+            # Finally the Authority
+            #authority_share = encrypt_with_public_key(repr(shares[0]), authority_public_key)
+
+            ### Above for encryption that needs resolution - TBI
+
+            claimant_share = shares[0]
+            server_share = shares[1]
+            authority_share = shares[2]
+
+            # Storing
+            store_key_fragment(user_profile, claimant_share, IPFS_hash)
+
+            server_user = get_user_by_address(settings.SERVER_OP_ACC_ADDRESS)
+            store_key_fragment(server_user, server_share, IPFS_hash)
+
+            authority_user = get_user_by_address(authority_address)
+            store_key_fragment(authority_user, authority_share, IPFS_hash)
+
+            wallet_address = Web3.to_checksum_address(user_profile.address)
 
             # Prepare the transaction data
             transaction = verify_contract_instance.functions.createClaim(
                 _requester=wallet_address,
-                _authority=authority_public_key,
+                _authority=authority_address,
                 _yearOfGraduation=year_of_graduation,
                 _studentNumber=student_number,
                 _fullName=full_name,
@@ -202,7 +232,7 @@ def store_signed_certificate(request):
 def verify_signature(request):
     """Verify the signature of a certificate based on user input."""
     if request.method == 'POST':
-        public_key = request.POST.get('public_key')
+        address = request.POST.get('address')
         certificate_hash = request.POST.get('certificate_hash')
         signature = request.POST.get('signature')
 
@@ -220,13 +250,14 @@ def verify_signature(request):
             )
 
             # Check if the recovered address matches the provided public key
-            if recovered_address.lower() == public_key.lower():
+            if recovered_address.lower() == address.lower():
                 return render(request, 'verify_signature.html', {
                     'result': 'Success: Signature is valid and matches the public key.',
                     'result_color': 'green'
                 })
             else:
                 return render(request, 'verify_signature.html', {
+
                     'result': 'Error: Signature does not match the public key.',
                     'result_color': 'red'
                 })
@@ -239,7 +270,44 @@ def verify_signature(request):
     # Render the form page for GET requests
     return render(request, 'verify_signature.html')
 
+from django.shortcuts import get_object_or_404
+from .models import KeyFragment
+
 def decrypt_claim(request):
+    if request.method == 'POST':
+        ipfs_hash = request.POST['ipfs_hash']
+
+        # Assume the user is the requester
+        user_profile = request.user
+
+        # Retrieve the encrypted data from IPFS
+        ipfs_url = f"http://127.0.0.1:8080/ipfs/{ipfs_hash}"
+        response = requests.get(ipfs_url)
+
+        if response.status_code == 200:
+            encrypted_data = response.text
+
+            # Get the user's key fragment
+            user_fragment = get_object_or_404(KeyFragment, user=user_profile, ipfs_hash=ipfs_hash)
+
+            # Get the server's key fragment
+            server_user = get_user_by_address(settings.SERVER_OP_ACC_ADDRESS)
+            server_fragment = get_object_or_404(KeyFragment, user=server_user, ipfs_hash=ipfs_hash)
+
+            # Combine fragments to decrypt
+            shares = [ast.literal_eval(user_fragment.fragment), ast.literal_eval(server_fragment.fragment)]
+
+            # Decrypt the data using the provided shares
+            decrypted_data = decrypt_with_shares(encrypted_data, shares)
+
+            # Render the decrypted data on the page
+            return render(request, 'decrypted_data.html', {'decrypted_data': decrypted_data})
+        else:
+            return render(request, 'decrypt_claim.html', {'error': 'Failed to retrieve data from IPFS'})
+
+    return render(request, 'decrypt_claim.html')
+
+def decrypt_claim_DEP(request):
     if request.method == 'POST':
         ipfs_hash = request.POST['ipfs_hash']
         share1 = request.POST['share1']
@@ -255,6 +323,13 @@ def decrypt_claim(request):
             share1 = ast.literal_eval(share1)
             share2 = ast.literal_eval(share2)
             shares = [share1, share2]
+
+            # FUTURE DECRYPTION WITH JS-FE PRIVATE KEY REQUIREMENT
+                 # What worked:
+                    # 1. use a = repr(share)
+                    # 2. import ast; ast.literal_eval(a) to convert back to tuple original form
+                    # 3. ???
+                    # 4. Profit
 
             # Decrypt the data using the provided shares
             decrypted_data = decrypt_with_shares(encrypted_data, shares)

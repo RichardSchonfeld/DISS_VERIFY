@@ -24,7 +24,7 @@
         <label for="authority">Select Authority:</label>
         <select id="authority" name="authority" required>
             {% for authority in authorities %}
-                <option value="{{ authority.public_key }}">{{ authority.username }}</option>
+                <option value="{{ authority.address }}">{{ authority.username }}</option>
             {% endfor %}
         </select><br>
 

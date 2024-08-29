@@ -8,6 +8,8 @@ from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import padding
+from cryptography.hazmat.primitives.asymmetric import rsa
+from cryptography.hazmat.primitives.asymmetric import padding as padding_asym
 
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import pad, unpad
@@ -127,3 +129,28 @@ def write_shares_to_local_file(shares):
             file.write(f"Share {index}: {share}\n")
 
     print(f"Shamir keys have been written to {file_path}")
+
+
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import padding
+from cryptography.hazmat.primitives import hashes
+
+
+def encrypt_with_public_key(content: str, public_key_hex: str) -> bytes:
+    # Convert the hex string to bytes
+    public_key_bytes = bytes.fromhex(public_key_hex[2:])
+
+    # Load the public key from bytes (assuming the public key is in DER format)
+    public_key = serialization.load_der_public_key(public_key_bytes)
+
+    # Encrypt the content using the public key
+    encrypted_data = public_key.encrypt(
+        content.encode('utf-8'),
+        padding.OAEP(
+            mgf=padding.MGF1(algorithm=hashes.SHA256()),
+            algorithm=hashes.SHA256(),
+            label=None
+        )
+    )
+
+    return encrypted_data

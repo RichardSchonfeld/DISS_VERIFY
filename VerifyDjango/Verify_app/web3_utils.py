@@ -55,12 +55,12 @@ def verify_signature_login_metamask(request):
     if recovered_address.lower() == account.lower():
         # User authenticated successfully, find or create user
         try:
-            user = CustomUser.objects.get(public_key=account)
+            user = CustomUser.objects.get(address=account)
         except CustomUser.DoesNotExist:
             # Create a new Web3 user if it doesn't exist
             user = CustomUser(
                 username=account,
-                public_key=account,
+                address=account,
                 is_web3_user=True,
             )
             user.save()

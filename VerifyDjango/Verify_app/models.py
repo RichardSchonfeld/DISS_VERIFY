@@ -50,7 +50,7 @@ class Web3Account(models.Model):
 
 class CustomUser(AbstractUser):
     email = models.EmailField(null=True, unique=True, blank=True)
-    public_key = models.CharField(max_length=42, unique=True, blank=True, null=True)
+    address = models.CharField(max_length=42, unique=True, blank=True, null=True)
     encrypted_private_key = models.TextField(blank=True, null=True)
     is_web3_user = models.BooleanField(default=False)  # Flag to distinguish between Django and Web3 users
     is_authority = models.BooleanField(default=False)
@@ -67,7 +67,7 @@ class CustomUser(AbstractUser):
         if not self.is_web3_user and not self.email:
             raise ValidationError("Email is required for Django users.")
         # Ensure public key is required for Web3 users
-        if self.is_web3_user and not self.public_key:
+        if self.is_web3_user and not self.address:
             raise ValidationError("Public key is required for Web3 users.")
         if self.is_authority and not self.institution_name:
             raise ValidationError("Institution name is required for Authority.")
@@ -121,4 +121,4 @@ class Certificate(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)  # Automatically set the time when created
 
     def __str__(self):
-        return f"Certificate for {self.user.email or self.user.public_key}"
+        return f"Certificate for {self.user.email or self.user.address}"

@@ -20,3 +20,6 @@ class UserRegisterForm(UserCreationForm):
 ### Database Operations
 def store_key_fragment(user, fragmnet_data, ipfs_hash):
     KeyFragment.objects.create(user=user, fragment=fragmnet_data, ipfs_hash=ipfs_hash)
+
+def get_user_by_address(address):
+    return CustomUser.objects.get(address=address)

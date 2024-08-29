@@ -8,7 +8,7 @@
     <script src="https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js"></script>
     <script src="{% static 'js/encryption.js' %}"></script>
 </head>
-<body>
+<div>
     <h1>Register</h1>
     <form id="registerForm" method="post" onsubmit="event.preventDefault(); registerUser();">
         {% csrf_token %}
@@ -24,10 +24,14 @@
             <label for="password2">Confirm Password:</label>
             <input type="password" id="password2" name="password2" required>
         </div>
-        <input type="hidden" id="public_key" name="public_key">
+        <input type="hidden" id="address" name="address">
         <input type="hidden" id="encrypted_private_key" name="encrypted_private_key">
         <button type="submit">Register</button>
     </form>
+
+    <div id="error-message" style="color: red;"></div>
+        <p>{{form_errors}}</p>
+    </div>
 
     <script>
         async function registerUser() {
@@ -45,7 +49,7 @@
             const encrypted_private_key = await encryptPrivateKey(private_key, password);
 
             // Update the hidden fields with the generated data
-            formData.append('public_key', eth_address);
+            formData.append('address', eth_address);
             formData.append('encrypted_private_key', encrypted_private_key);
 
             // Submit the form via fetch API
@@ -57,9 +61,11 @@
             if (response.ok) {
                 window.location.href = "/";
             } else {
-                alert('Registration failed');
+                const errorMessage = await response.text();
+                document.getElementById('error-message').textContent = 'Registration failed: ' + errorMessage;
             }
         }
+
     </script>
 </body>
 </html>
