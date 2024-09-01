@@ -153,12 +153,8 @@
             "id": "5b3ee201e3e59918",
             "type": "leaf",
             "state": {
-              "type": "markdown",
-              "state": {
-                "file": "IDEA- SIGNATURE BASED SECURITY ENC.md",
-                "mode": "source",
-                "source": false
-              }
+              "type": "graph",
+              "state": {}
             }
           }
         ],
@@ -228,7 +224,6 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "IDEA- SIGNATURE BASED SECURITY ENC.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -245,7 +240,6 @@
             "state": {
               "type": "outgoing-link",
               "state": {
-                "file": "IDEA- SIGNATURE BASED SECURITY ENC.md",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               }
@@ -267,9 +261,7 @@
             "type": "leaf",
             "state": {
               "type": "outline",
-              "state": {
-                "file": "IDEA- SIGNATURE BASED SECURITY ENC.md"
-              }
+              "state": {}
             }
           }
         ]
@@ -291,8 +283,8 @@
   },
   "active": "5b3ee201e3e59918",
   "lastOpenFiles": [
-    "Some lit notes.md",
     "IDEA- SIGNATURE BASED SECURITY ENC.md",
+    "Some lit notes.md",
     "How it works.md",
     "JUST INCASE.md",
     "Thesis Material Chapters.md",

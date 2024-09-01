@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>User Claims</title>
+</head>
+<body>
+    <h1>Your Claims</h1>
+
+    {% if error %}
+        <p>{{ error }}</p>
+    {% else %}
+        {% if claims %}
+            <ul>
+                {% for claim in claims %}
+                    <li>
+                        <strong>Claim ID:</strong> {{ claim.claim_id }}<br>
+                        <strong>Requester:</strong> {{ claim.requester }}<br>
+                        <strong>Authority:</strong> {{ claim.authority }}<br>
+                        <strong>Year of Graduation:</strong> {{ claim.year_of_graduation }}<br>
+                        <strong>Student Number:</strong> {{ claim.student_number }}<br>
+                        <strong>Full Name:</strong> {{ claim.full_name }}<br>
+                        <strong>IPFS Hash:</strong> {{ claim.ipfs_hash }}<br>
+                        <strong>Signed:</strong> {{ claim.signed }}<br>
+                    </li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p>No claims found.</p>
+        {% endif %}
+    {% endif %}
+</body>
+</html>

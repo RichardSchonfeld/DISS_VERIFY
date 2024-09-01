@@ -68,8 +68,10 @@ def get_claim():
 
     return claims
 
+
+
 def fund_account(new_account_address):
-    preset_account_address = '0x0dAD17E4C8E3d3290073b69971B5b11988AAdc62'
+    preset_account_address = '0x148bB7d17fE7DCd704660b79E9C006d71FCC65F9'
     preset_private_key = os.getenv('FUND_TEST_PRIVATE_KEY')
 
     # Define the amount of Ether to send (in Wei)
@@ -91,7 +93,7 @@ def fund_account(new_account_address):
     signed_tx = web3.eth.account.sign_transaction(tx, preset_private_key)
 
     # Send the transaction
-    tx_hash = web3.eth.send_raw_transaction(signed_tx.rawTransaction)
+    tx_hash = web3.eth.send_raw_transaction(signed_tx.raw_transaction)
 
     # Wait for the transaction to be mined
     web3.eth.wait_for_transaction_receipt(tx_hash)

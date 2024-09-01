@@ -11,10 +11,11 @@ urlpatterns = [
     path('web3/verify/', verify_signature_login_metamask, name='verify_signature'),
     path('register/', register, name='register'),
     path('recover_key/', recover_key, name='recover_key'),
-    path('view-claims/', view_claims, name='view-claims'),
+    #path('view-claims/', view_claims, name='view-claims'),
     path('transaction-confirmation/', transaction_confirmation, name='transaction_confirmation'),
     path('decrypt-claim-data/', decrypt_claim, name='decrypt-claim-data'),
     path('sign-certificate/', sign_certificate, name='sign_certificate'),
     path('store-signed-certificate/', store_signed_certificate, name='store_signed_certificate'),
     path('verify-signature/', verify_signature, name="verify_signature"),
+    path('view-claims/', user_claims_view, name="view_claims"),
 ]

@@ -138,7 +138,7 @@ def create_claim(request):
                 _ipfsHash=IPFS_hash
             ).build_transaction({
                 'chainId': 1337,  # Ganache
-                'gas': 300000,
+                'gas': 500000,
                 'gasPrice': web3.to_wei('50', 'gwei'),
                 'nonce': web3.eth.get_transaction_count(wallet_address),
             })
@@ -273,6 +273,44 @@ def verify_signature(request):
 from django.shortcuts import get_object_or_404
 from .models import KeyFragment
 
+def user_claims_view(request):
+    user = request.user
+
+    if user.is_authenticated:
+        user_address = user.address  # Assuming you store user's Ethereum address in CustomUser model
+
+        # Connect to Ethereum blockchain
+        web3 = Web3(Web3.HTTPProvider('http://localhost:8545'))
+
+        # Load the contract
+        with open('build/contracts/Verify.json') as f:
+            contract_data = json.load(f)
+            contract_abi = contract_data['abi']
+
+        contract_address = settings.CONTRACT_ADDRESS
+        verify_contract_instance = web3.eth.contract(address=contract_address, abi=contract_abi)
+
+        # Call the getClaimsByAddress function
+        claim_ids = verify_contract_instance.functions.getClaimsByAddress(user_address).call()
+
+        claims = []
+        for claim_id in claim_ids:
+            claim = verify_contract_instance.functions.getClaim(claim_id).call()
+            claims.append({
+                'claim_id': claim_id,
+                'requester': claim[0],
+                'authority': claim[1],
+                'year_of_graduation': claim[2],
+                'student_number': claim[3],
+                'full_name': claim[4],
+                'ipfs_hash': claim[5],
+                'signed': claim[6],
+            })
+
+        return render(request, 'user_claims.html', {'claims': claims})
+    else:
+        return render(request, 'user_claims.html', {'error': 'User not authenticated'})
+
 def decrypt_claim(request):
     if request.method == 'POST':
         ipfs_hash = request.POST['ipfs_hash']
@@ -288,11 +326,11 @@ def decrypt_claim(request):
             encrypted_data = response.text
 
             # Get the user's key fragment
-            user_fragment = get_object_or_404(KeyFragment, user=user_profile, ipfs_hash=ipfs_hash)
+            user_fragment = KeyFragment.objects.filter(user=request.user, ipfs_hash=ipfs_hash).first()
 
             # Get the server's key fragment
             server_user = get_user_by_address(settings.SERVER_OP_ACC_ADDRESS)
-            server_fragment = get_object_or_404(KeyFragment, user=server_user, ipfs_hash=ipfs_hash)
+            server_fragment = KeyFragment.objects.filter(user=server_user, ipfs_hash=ipfs_hash).first()
 
             # Combine fragments to decrypt
             shares = [ast.literal_eval(user_fragment.fragment), ast.literal_eval(server_fragment.fragment)]

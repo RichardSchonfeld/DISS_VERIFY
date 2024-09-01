@@ -12,6 +12,7 @@ contract Verify {
     }
 
     mapping(uint256 => ClaimData) public claims;
+    mapping(address => uint256[]) public claimsByAddress;
     uint256 public claimCount;
 
     event ClaimCreated(uint256 indexed claimId, address indexed initiator, address indexed authority, string ipfsHash);
@@ -35,6 +36,10 @@ contract Verify {
             ipfsHash: _ipfsHash,
             signed: false
         });
+
+        claimsByAddress[_requester].push(claimCount);
+        claimsByAddress[_authority].push(claimCount);
+
         emit ClaimCreated(claimCount, _requester, _authority, _ipfsHash);
     }
 
@@ -60,5 +65,10 @@ contract Verify {
             claim.requester, claim.authority, claim.yearOfGraduation,
             claim.studentNumber, claim.fullName, claim.ipfsHash, claim.signed
         );
+    }
+
+    // New function to get all claims associated with an address
+    function getClaimsByAddress(address _address) public view returns (uint256[] memory) {
+        return claimsByAddress[_address];
     }
 }
