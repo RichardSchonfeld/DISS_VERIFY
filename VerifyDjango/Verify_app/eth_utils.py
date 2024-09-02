@@ -93,7 +93,7 @@ def fund_account(new_account_address):
     signed_tx = web3.eth.account.sign_transaction(tx, preset_private_key)
 
     # Send the transaction
-    tx_hash = web3.eth.send_raw_transaction(signed_tx.raw_transaction)
+    tx_hash = web3.eth.send_raw_transaction(signed_tx.rawTransaction)
 
     # Wait for the transaction to be mined
     web3.eth.wait_for_transaction_receipt(tx_hash)

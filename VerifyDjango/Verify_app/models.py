@@ -99,8 +99,8 @@ class KeyFragment(models.Model):
 
 
 class Claim(models.Model):
-    requester = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
-    authority = models.CharField(max_length=255)
+    requester = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='claims')
+    authority = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='authorities')
     year_of_graduation = models.CharField(max_length=4)
     student_number = models.CharField(max_length=20)
     full_name = models.CharField(max_length=255)
@@ -111,7 +111,6 @@ class Claim(models.Model):
     def __str__(self):
         return f'Claim {self.id} by {self.requester}'
 
-from django.db import models
 
 class Certificate(models.Model):
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)  # Assuming you have a CustomUser model

@@ -23,3 +23,11 @@ def store_key_fragment(user, fragmnet_data, ipfs_hash):
 
 def get_user_by_address(address):
     return CustomUser.objects.get(address=address)
+
+
+def get_authority_name_from_address(address):
+    try:
+        authority = CustomUser.objects.get(address=address)
+        return authority.institution_name if authority.institution_name else address
+    except CustomUser.DoesNotExist:
+        return address

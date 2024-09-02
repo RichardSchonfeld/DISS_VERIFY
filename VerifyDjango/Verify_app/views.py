@@ -16,7 +16,7 @@ from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
 
 from .models import Claim, CustomUser, Certificate
-from .forms import UserRegisterForm, store_key_fragment, get_user_by_address
+from .forms import UserRegisterForm, store_key_fragment, get_user_by_address, get_authority_name_from_address
 from .ipfs_functions import get_ipfs_raw_data, parse_json_decrypted_ipfs_data, get_ipfs_decrypted_data
 from .eth_utils import create_claim, sign_claim, get_claim, fund_account
 from .encryption_utils import encrypt_private_key, derive_key, decrypt_private_key, encrypt_and_split, \
@@ -273,7 +273,8 @@ def verify_signature(request):
 from django.shortcuts import get_object_or_404
 from .models import KeyFragment
 
-def user_claims_view(request):
+
+def user_profile_view(request):
     user = request.user
 
     if user.is_authenticated:
@@ -296,10 +297,17 @@ def user_claims_view(request):
         claims = []
         for claim_id in claim_ids:
             claim = verify_contract_instance.functions.getClaim(claim_id).call()
+
+            # Retrieve authority address from the claim
+            authority_address = claim[1]
+
+            # Use the function to resolve the authority name
+            authority_name = get_authority_name_from_address(authority_address)
+
             claims.append({
                 'claim_id': claim_id,
                 'requester': claim[0],
-                'authority': claim[1],
+                'authority': authority_name,  # Use the resolved authority name
                 'year_of_graduation': claim[2],
                 'student_number': claim[3],
                 'full_name': claim[4],
@@ -307,10 +315,45 @@ def user_claims_view(request):
                 'signed': claim[6],
             })
 
-        return render(request, 'user_claims.html', {'claims': claims})
+        return render(request, 'user_profile.html', {'claims': claims})
     else:
-        return render(request, 'user_claims.html', {'error': 'User not authenticated'})
+        return render(request, 'user_profile.html', {'error': 'User not authenticated'})
 
+
+def claim_detail_view(request, claim_id):
+    user = request.user
+
+    if user.is_authenticated:
+        user_address = user.address
+
+        # Connect to Ethereum blockchain
+        web3 = Web3(Web3.HTTPProvider('http://localhost:8545'))
+
+        # Load the contract
+        with open('build/contracts/Verify.json') as f:
+            contract_data = json.load(f)
+            contract_abi = contract_data['abi']
+
+        contract_address = settings.CONTRACT_ADDRESS
+        verify_contract_instance = web3.eth.contract(address=contract_address, abi=contract_abi)
+
+        # Retrieve the specific claim
+        claim = verify_contract_instance.functions.getClaim(claim_id).call()
+
+        claim_detail = {
+            'claim_id': claim_id,
+            'requester': claim[0],
+            'authority': claim[1],
+            'year_of_graduation': claim[2],
+            'student_number': claim[3],
+            'full_name': claim[4],
+            'ipfs_hash': claim[5],
+            'signed': claim[6],
+        }
+
+        return render(request, 'claim_detail.html', {'claim': claim_detail})
+    else:
+        return render(request, 'claim_detail.html', {'error': 'User not authenticated'})
 def decrypt_claim(request):
     if request.method == 'POST':
         ipfs_hash = request.POST['ipfs_hash']
