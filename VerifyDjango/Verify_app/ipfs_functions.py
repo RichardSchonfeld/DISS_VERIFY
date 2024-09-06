@@ -1,6 +1,12 @@
 import requests
 import ast
+
+from django.conf import settings
+
 from .encryption_utils import decrypt_with_shares
+from .forms import get_user_by_address
+from .models import KeyFragment
+
 
 def get_ipfs_raw_data(ipfs_hash):
     """Retrieve encrypted data from IPFS."""
@@ -44,6 +50,45 @@ def get_ipfs_decrypted_data(ipfs_hash, share1, share2):
     except requests.exceptions.RequestException as req_err:
         print(f"An error occurred: {req_err}")  # Handle any other request-related errors
     return None
+
+
+def get_decrypted_data_from_ipfs(ipfs_hash, user):
+    """
+    Retrieve and decrypt data from IPFS using the user's key fragment and the server's key fragment.
+
+    Args:
+        ipfs_hash (str): The IPFS hash of the encrypted data.
+        user (CustomUser): The user requesting the data.
+
+    Returns:
+        str: The decrypted data if successful, or None if any part of the process fails.
+    """
+    # Retrieve the encrypted data from IPFS
+    ipfs_url = f"http://127.0.0.1:8080/ipfs/{ipfs_hash}"
+    response = requests.get(ipfs_url)
+
+    if response.status_code != 200:
+        return None  # Handle the error by returning None or raising an exception
+
+    encrypted_data = response.text
+
+    # Get the user's key fragment
+    user_fragment = KeyFragment.objects.filter(user=user, ipfs_hash=ipfs_hash).first()
+
+    # Get the server's key fragment
+    server_user = get_user_by_address(settings.SERVER_OP_ACC_ADDRESS)
+    server_fragment = KeyFragment.objects.filter(user=server_user, ipfs_hash=ipfs_hash).first()
+
+    if not user_fragment or not server_fragment:
+        return None  # If fragments are missing, return None or handle accordingly
+
+    # Combine fragments to decrypt
+    shares = [ast.literal_eval(user_fragment.fragment), ast.literal_eval(server_fragment.fragment)]
+
+    # Decrypt the data using the provided shares
+    decrypted_data = decrypt_with_shares(encrypted_data, shares)
+
+    return decrypted_data
 
 
 def check_if_pinned(cid):

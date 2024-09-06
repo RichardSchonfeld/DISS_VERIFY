@@ -108,3 +108,46 @@ def create_new_eth_account():
 
     # We encrypt using their wallet keys if they have a wallet (the key fragments themselves)
         # Otherwise we use auto-generated keys encrypted with user passwords
+
+
+
+"""def prepare_transaction_data(request):
+    web3 = Web3(Web3.HTTPProvider('http://localhost:8545'))
+    # Extract necessary form data
+    year_of_graduation = request.POST.get('year_of_graduation')
+    student_number = request.POST.get('student_number')
+    full_name = request.POST.get('full_name')
+    authority_address = request.POST.get('authority')
+
+    # Encrypt the claim data
+    claim_data = f"{year_of_graduation},{student_number},{full_name}"
+    encrypted_data, shares = encrypt_and_split(claim_data)
+
+    # Upload encrypted data to IPFS and get IPFS hash
+    ipfs_hash = upload_to_ipfs(encrypted_data)
+
+    # Prepare the transaction for the blockchain
+    wallet_address = Web3.to_checksum_address(request.user.address)
+
+    with open('build/contracts/Verify.json') as f:
+        contract_data = json.load(f)
+        contract_abi = contract_data['abi']
+    contract_address = settings.CONTRACT_ADDRESS
+    verify_contract_instance = web3.eth.contract(address=contract_address, abi=contract_abi)
+
+
+    transaction = verify_contract_instance.functions.createClaim(
+        _requester=wallet_address,
+        _authority=authority_address,
+        _yearOfGraduation=year_of_graduation,
+        _studentNumber=student_number,
+        _fullName=full_name,
+        _ipfsHash=ipfs_hash
+    ).build_transaction({
+        'chainId': 1337,  # Ganache chain ID
+        'gas': 500000,
+        'gasPrice': Web3.to_wei('50', 'gwei'),
+        'nonce': web3.eth.get_transaction_count(wallet_address),
+    })
+
+    return transaction"""

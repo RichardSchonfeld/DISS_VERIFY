@@ -1,23 +1,25 @@
 import hashlib
 import json
-
-from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
-from django.conf import settings
-from eth_account.messages import encode_defunct
-from rest_framework.views import APIView
-from rest_framework.response import Response
-
 import requests
 import ast
 from web3 import Web3
 
+from django.contrib.auth import authenticate, login
+from django.http import JsonResponse, HttpResponseRedirect
+from django.views.decorators.csrf import csrf_exempt
+from django.conf import settings
+from django.urls import reverse
 from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
 
+from eth_account.messages import encode_defunct
+from rest_framework.views import APIView
+from rest_framework.response import Response
+
 from .models import Claim, CustomUser, Certificate
-from .forms import UserRegisterForm, store_key_fragment, get_user_by_address, get_authority_name_from_address
-from .ipfs_functions import get_ipfs_raw_data, parse_json_decrypted_ipfs_data, get_ipfs_decrypted_data
+from .forms import UserRegisterForm, store_key_fragment, get_user_by_address, get_authority_name_from_address, save_claim_to_django_DB
+from .ipfs_functions import get_ipfs_raw_data, parse_json_decrypted_ipfs_data, get_ipfs_decrypted_data, \
+    get_decrypted_data_from_ipfs
 from .eth_utils import create_claim, sign_claim, get_claim, fund_account
 from .encryption_utils import encrypt_private_key, derive_key, decrypt_private_key, encrypt_and_split, \
     decrypt_with_shares, encrypt_with_public_key
@@ -25,11 +27,20 @@ from .web3_utils import upload_to_ipfs
 
 
 def index(request):
-    return render(request, "index.html")
+    return render(request, "home.html")
 
 def login_view(request):
-    return render(request, "login.html")
-
+    if request.method == "POST":
+        username = request.POST.get('username')
+        password = request.POST.get('password')
+        user = authenticate(request, username=username, password=password)
+        if user is not None:
+            login(request, user)
+            return HttpResponseRedirect(reverse('home'))
+        else:
+            return render(request, 'login.html', {'error': 'Invalid credentials. Please try again.'})
+    else:
+        return render(request, 'login.html')
 
 def register(request):
     if request.method == 'POST':
@@ -69,6 +80,10 @@ def create_claim(request):
             try:
                 data = json.loads(data)
                 txn_hash = web3.eth.send_raw_transaction(data['signedTransaction'])
+
+                # Save the claim to the database
+                save_claim_to_django_DB(request, txn_hash.hex())
+
                 return JsonResponse({'txn_hash': txn_hash.hex()})
             except Exception as e:
                 return JsonResponse({'error': str(e)}, status=500)
@@ -77,6 +92,10 @@ def create_claim(request):
             # MetaMask User Flow: Transaction already sent, just log the transaction hash
             data = json.loads(data)
             txn_hash = data['txnHash']
+
+            # Save the claim to the database
+            save_claim_to_django_DB(request, txn_hash)
+
             return JsonResponse({'txn_hash': txn_hash})
 
         else:
@@ -97,38 +116,13 @@ def create_claim(request):
             data = f"{year_of_graduation},{student_number},{full_name}"
             encrypted_data, shares = encrypt_and_split(data)
 
-            user_profile = request.user
             # Uploading to IPFS and getting hash back
             IPFS_hash = upload_to_ipfs(encrypted_data)
 
-            # Distributing keys
-            store_key_fragment(user_profile, shares, IPFS_hash)
-
-            # First the requester (claimant)
-            #claimant_share = encrypt_with_public_key(repr(shares[0]), user_profile.public_key)
-            # Then the server (Dapp)
-            #server_share = encrypt_with_public_key(repr(shares[0]), settings.PUBLIC_KEY)
-            # Finally the Authority
-            #authority_share = encrypt_with_public_key(repr(shares[0]), authority_public_key)
-
-            ### Above for encryption that needs resolution - TBI
-
-            claimant_share = shares[0]
-            server_share = shares[1]
-            authority_share = shares[2]
-
-            # Storing
-            store_key_fragment(user_profile, claimant_share, IPFS_hash)
-
-            server_user = get_user_by_address(settings.SERVER_OP_ACC_ADDRESS)
-            store_key_fragment(server_user, server_share, IPFS_hash)
-
-            authority_user = get_user_by_address(authority_address)
-            store_key_fragment(authority_user, authority_share, IPFS_hash)
-
+            # Prepare the transaction data
+            user_profile = request.user
             wallet_address = Web3.to_checksum_address(user_profile.address)
 
-            # Prepare the transaction data
             transaction = verify_contract_instance.functions.createClaim(
                 _requester=wallet_address,
                 _authority=authority_address,
@@ -143,9 +137,19 @@ def create_claim(request):
                 'nonce': web3.eth.get_transaction_count(wallet_address),
             })
 
+            # Save the IPFS hash in the session for later use
+            request.session['ipfs_hash'] = IPFS_hash
+
+            claim_data_for_DB = {
+                'authority': authority_address,
+                'ipfs_hash': IPFS_hash
+            }
+
             # Render the signing page with the transaction data
             context = {
                 'transaction_data': json.dumps(transaction),
+                'claim_data': json.dumps(claim_data_for_DB),
+                'user': request.user,
                 'encrypted_private_key': user_profile.encrypted_private_key if not user_profile.is_web3_user else None,
             }
             return render(request, 'submit_claim.html', context)
@@ -153,10 +157,72 @@ def create_claim(request):
         authorities = CustomUser.objects.filter(is_authority=True)
         return render(request, 'create_claim.html', {'authorities': authorities})
 
+
 def view_claims(request):
     claims = get_claim()
     return render(request, 'view_claims.html', {'claims': claims})
 
+
+def prepare_certificate_data(claim):
+    """Parse claim data to generate certificate data."""
+    return {
+        "year_of_graduation": claim.year_of_graduation,
+        "student_number": claim.student_number,
+        "name": claim.full_name,
+        "course_details": "Bachelor of Science in Computer Science",
+        "issuer": "University Name",
+        "date_of_issue": "2024-08-15"
+    }
+
+def generate_certificate_hash(certificate_data):
+    """Convert certificate data to a hash for signing."""
+    certificate_json = json.dumps(certificate_data)
+    return hashlib.sha256(certificate_json.encode()).hexdigest()
+
+def sign_certificate_view(request):
+    """Handle the certificate signing view."""
+    if request.method == 'POST':
+        claim_id = request.POST.get('claim_id')
+        claim = Claim.objects.get(id=claim_id)
+
+        # Prepare certificate data
+        certificate_data = prepare_certificate_data(claim)
+        certificate_hash = generate_certificate_hash(certificate_data)
+
+        # Encode the certificate hash for Ethereum
+        message = encode_defunct(hexstr=certificate_hash)
+
+        return JsonResponse({
+            "certificate_hash": Web3.to_hex(message.body),
+            "certificate_data": certificate_data
+        })
+
+    # Render list of unsigned claims for the authority to choose from
+    unsigned_claims = Claim.objects.filter(authority=request.user, signed=False)
+    return render(request, 'sign_certificate.html', {'unsigned_claims': unsigned_claims})
+
+
+def verify_certificate_signature(request):
+    """Verify the digital signature of the certificate."""
+    if request.method == 'POST':
+        address = request.POST.get('address')
+        certificate_hash = request.POST.get('certificate_hash')
+        signature = request.POST.get('signature')
+
+        try:
+            # Create Web3 instance and recover address
+            web3 = Web3()
+            message = encode_defunct(hexstr=certificate_hash)
+            recovered_address = web3.eth.account.recover_message(message, signature=signature)
+
+            if recovered_address.lower() == address.lower():
+                return JsonResponse({'status': 'success', 'message': 'Signature is valid and matches the public key.'})
+            else:
+                return JsonResponse({'status': 'error', 'message': 'Signature does not match the public key.'})
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': f'Error: {str(e)}'}, status=500)
+
+    return render(request, 'verify_signature.html')
 
 #### DOUBLE CHECK IF CSRF EXEMPT IS OKAY HERE ####
 @csrf_exempt
@@ -340,6 +406,9 @@ def claim_detail_view(request, claim_id):
         # Retrieve the specific claim
         claim = verify_contract_instance.functions.getClaim(claim_id).call()
 
+        ipfs_hash = claim[5]
+        decrypted_data = get_decrypted_data_from_ipfs(ipfs_hash, request.user)
+
         claim_detail = {
             'claim_id': claim_id,
             'requester': claim[0],
@@ -348,12 +417,15 @@ def claim_detail_view(request, claim_id):
             'student_number': claim[3],
             'full_name': claim[4],
             'ipfs_hash': claim[5],
+            'decrypted_data': decrypted_data,
             'signed': claim[6],
         }
 
         return render(request, 'claim_detail.html', {'claim': claim_detail})
     else:
         return render(request, 'claim_detail.html', {'error': 'User not authenticated'})
+
+
 def decrypt_claim(request):
     if request.method == 'POST':
         ipfs_hash = request.POST['ipfs_hash']

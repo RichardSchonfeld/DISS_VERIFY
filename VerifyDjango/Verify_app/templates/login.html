@@ -1,16 +1,86 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
-    <title>Login with MetaMask</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Login</title>
+    {% load static %}
+    <!-- Include CSS Files from the Django Static Folder -->
+    <link rel="stylesheet" href="{% static 'css/bootstrap.min.css' %}">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <link rel="stylesheet" href="{% static 'css/responsive.css' %}">
     <script src="https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js"></script>
 </head>
+
 <body>
-    <h1>Login with MetaMask</h1>
-    <button id="loginButton">Login with Ethereum</button>
+    <!-- Header Section -->
+    <header id="header" class="navbar-fixed-top">
+        <div class="container">
+            <div class="row">
+                <div class="col-sm-12">
+                    <div class="logo-menu">
+                        <a href="{% url 'home' %}" class="logo"><img src="{% static 'images/logo.png' %}" alt="Logo"></a>
+                        <nav class="navbar-right">
+                            <ul id="nav" class="nav navbar-nav">
+                                <li><a href="{% url 'home' %}">Home</a></li>
+                                <li><a href="{% url 'user-profile' %}">Profile</a></li>
+                                <li><a href="#">Contact</a></li>
+                            </ul>
+                        </nav>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
 
-    {% csrf_token %}
+    <!-- Main Login Section -->
+    <section id="login" class="section-padding">
+        <div class="container">
+            <div class="row">
+                <!-- Standard Django Login -->
+                <div class="col-md-6 col-md-offset-1">
+                    <div class="login-form">
+                        <h3>Login</h3>
+                        <form method="post" action="{% url 'login' %}">
+                            {% csrf_token %}
+                            {% if error %}
+                                <div class="alert alert-danger" role="alert">
+                                    {{ error }}
+                                </div>
+                            {% endif %}
+                            <div class="form-group">
+                                <label for="email">Email address:</label>
+                                <input type="email" class="form-control" id="email" name="username" placeholder="Enter email" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="password">Password:</label>
+                                <input type="password" class="form-control" id="password" name="password" placeholder="Enter password" required>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Login</button>
+                        </form>
+                    </div>
+                </div>
 
+                <!-- MetaMask Web3 Login -->
+                <div class="col-md-5">
+                    <div class="web3-login">
+                        <h3>Login with Web3 (MetaMask)</h3>
+                        <p>Access your account using MetaMask and your Ethereum address.</p>
+                        <button class="btn btn-primary" id="loginWithWeb3">Login with MetaMask</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Include JS Files from the Django Static Folder -->
+    <script src="{% static 'js/vendor/jquery-1.11.2.min.js' %}"></script>
+    <script src="{% static 'js/vendor/bootstrap.min.js' %}"></script>
+    <script src="{% static 'js/plugins.js' %}"></script>
+    <script src="{% static 'js/main.js' %}"></script>
+
+    <!-- MetaMask Login Script -->
     <script type="text/javascript">
     async function loginWithMetaMask() {
         if (typeof window.ethereum !== 'undefined') {
@@ -25,12 +95,9 @@
             // Request a nonce from the backend
             const nonceResponse = await fetch(`/web3/nonce/?address=${account}`);
             const { nonce } = await nonceResponse.json();
-            console.log(nonce)
 
             // Sign the nonce with MetaMask
             const signature = await web3.eth.personal.sign(`Sign this nonce: ${nonce}`, account, '');
-
-            console.log("SIGNED PAST SIGNATURE")
 
             // Get CSRF token from Django
             const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
@@ -48,14 +115,16 @@
             if (verifyResponse.ok) {
                 window.location.href = "/";
             } else {
-                alert("Login failed!");
+                document.querySelector('.alert').innerText = 'MetaMask login failed. Please try again.';
+                document.querySelector('.alert').classList.remove('hidden');
             }
         } else {
             alert('MetaMask is not detected. Please install it to use this feature.');
         }
     }
 
-        document.getElementById("loginButton").addEventListener("click", loginWithMetaMask);
+    document.getElementById("loginWithWeb3").addEventListener("click", loginWithMetaMask);
     </script>
 </body>
+
 </html>

@@ -101,23 +101,21 @@ class KeyFragment(models.Model):
 class Claim(models.Model):
     requester = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='claims')
     authority = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='authorities')
-    year_of_graduation = models.CharField(max_length=4)
-    student_number = models.CharField(max_length=20)
-    full_name = models.CharField(max_length=255)
-    signed = models.BooleanField(default=False)
     ipfs_hash = models.CharField(max_length=255)
     transaction_hash = models.CharField(max_length=66)
+    signed = models.BooleanField(default=False)
 
     def __str__(self):
         return f'Claim {self.id} by {self.requester}'
 
 
 class Certificate(models.Model):
-    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)  # Assuming you have a CustomUser model
-    certificate_data = models.JSONField()  # Store the certificate data as a JSON object
-    certificate_hash = models.CharField(max_length=64)  # SHA-256 hash is 64 characters long
-    signature = models.TextField()  # Store the signature as text
-    created_at = models.DateTimeField(auto_now_add=True)  # Automatically set the time when created
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    authority = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='issued_certificates', on_delete=models.CASCADE)
+    claim = models.OneToOneField('Claim', on_delete=models.CASCADE)
+    ipfs_hash = models.CharField(max_length=255)
+    signature = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"Certificate for {self.user.email or self.user.address}"
+        return f"Certificate for {self.user.username} issued by {self.authority.username}"

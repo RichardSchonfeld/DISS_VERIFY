@@ -41,8 +41,6 @@ async function decryptPrivateKey(encryptedPrivateKey, password) {
             const iv = decodedData.slice(16, 32);
             const encryptedData = decodedData.slice(32);
 
-            console.log("IV Length:", iv.length);  // This should print 16
-
             const encoder = new TextEncoder();
             const keyMaterial = await crypto.subtle.importKey(
                 'raw',

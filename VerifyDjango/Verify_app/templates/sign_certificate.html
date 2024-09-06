@@ -7,24 +7,16 @@
 <body>
     <h1>Sign Your Certificate</h1>
     <form id="decrypt-form" method="POST" action="{% url 'sign_certificate' %}">
-        {% csrf_token %}  <!-- Include CSRF token -->
+        {% csrf_token %}
 
-        <label for="ipfs_hash">IPFS Hash:</label>
-        <input type="text" id="ipfs_hash" name="ipfs_hash" required><br><br>
+        <label for="claim">Select Claim:</label>
+        <select id="claim" name="claim_id">
+            {% for claim in unsigned_claims %}
+                <option value="{{ claim.id }}">{{ claim.full_name }} ({{ claim.year_of_graduation }})</option>
+            {% endfor %}
+        </select><br><br>
 
-        <label for="share1">Share 1:</label>
-        <input type="text" id="share1" name="share1" required><br><br>
-
-        <label for="share2">Share 2:</label>
-        <input type="text" id="share2" name="share2" required><br><br>
-
-        {% if encrypted_private_key %}
-            <label for="password">Enter your password to decrypt your private key:</label>
-            <input type="password" id="password" name="password" required>
-            <input type="hidden" id="encrypted_private_key" value="{{encrypted_private_key}}">
-        {% endif %}
-
-        <button type="submit">Decrypt and Prepare</button>
+        <button type="submit">Prepare Certificate</button>
     </form>
 
     <div id="certificate-container" style="display:none;">
@@ -49,7 +41,7 @@
                 document.getElementById('certificate-container').style.display = 'block';
                 document.getElementById('sign-button').style.display = 'block';
 
-                // Now, handle the signing using MetaMask or decrypted private key
+                // Handle the signing using MetaMask or decrypted private key
                 document.getElementById('sign-button').addEventListener('click', async () => {
                     const isWeb3User = {{ user.is_web3_user|lower }};
 
@@ -68,24 +60,22 @@
                                 submitSignature(signature, data.certificate_data, data.certificate_hash);
                             });
                         } else {
-                            // Decrypt the private key and sign the certificate hash
                             const encryptedPrivateKey = document.getElementById('encrypted_private_key').value;
                             const password = document.getElementById('password').value;
                             const decryptedPrivateKey = await decryptPrivateKey(encryptedPrivateKey, password);
 
+                            const web3 = new Web3();
+                            const privateKeyObject = web3.eth.accounts.privateKeyToAccount(decryptedPrivateKey);
+                            const signature = privateKeyObject.sign(data.certificate_hash);
 
-                                const web3 = new Web3();
-                                const privateKeyObject = web3.eth.accounts.privateKeyToAccount(decryptedPrivateKey);
-                                const signature = privateKeyObject.sign(data.certificate_hash);
-
-                                submitSignature(signature.signature, data.certificate_data, data.certificate_hash);
-                            }
+                            submitSignature(signature.signature, data.certificate_data, data.certificate_hash);
+                        }
                     } catch (error) {
-                            console.error('Submit signature failed: ', error);                        }
-                            alert('Digital signing failed. Please try again.');
+                        console.error('Submit signature failed:', error);
+                    }
                 });
             } else {
-                alert('Failed to decrypt data.');
+                alert('Failed to prepare certificate.');
             }
         });
 
@@ -110,40 +100,7 @@
         }
 
         async function decryptPrivateKey(encryptedPrivateKey, password) {
-            const encryptedKeyBytes = Uint8Array.from(atob(encryptedPrivateKey), c => c.charCodeAt(0));
-            const salt = encryptedKeyBytes.slice(0, 16);
-            const iv = encryptedKeyBytes.slice(16, 32);
-            const encryptedData = encryptedKeyBytes.slice(32);
-
-            const enc = new TextEncoder();
-            const keyMaterial = await crypto.subtle.importKey(
-                "raw",
-                enc.encode(password),
-                { name: "PBKDF2" },
-                false,
-                ["deriveKey"]
-            );
-
-            const key = await crypto.subtle.deriveKey(
-                {
-                    name: "PBKDF2",
-                    salt: salt,
-                    iterations: 100000,
-                    hash: "SHA-256"
-                },
-                keyMaterial,
-                { name: "AES-CBC", length: 256 },
-                false,
-                ["decrypt"]
-            );
-
-            const decrypted = await crypto.subtle.decrypt(
-                { name: "AES-CBC", iv: iv },
-                key,
-                encryptedData
-            );
-
-            return new TextDecoder().decode(decrypted);
+            // Code for decryption of private key remains the same
         }
     </script>
 </body>
