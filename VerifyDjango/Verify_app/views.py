@@ -3,6 +3,11 @@ import json
 import requests
 import ast
 from web3 import Web3
+import hashlib
+import datetime
+import json
+import os
+import base64
 
 from django.contrib.auth import authenticate, login
 from django.http import JsonResponse, HttpResponseRedirect
@@ -24,6 +29,11 @@ from .eth_utils import create_claim, sign_claim, get_claim, fund_account
 from .encryption_utils import encrypt_private_key, derive_key, decrypt_private_key, encrypt_and_split, \
     decrypt_with_shares, encrypt_with_public_key
 from .web3_utils import upload_to_ipfs
+from io import BytesIO
+
+from reportlab.lib.pagesizes import A4
+from reportlab.pdfgen import canvas
+
 
 
 def index(request):
@@ -164,42 +174,124 @@ def view_claims(request):
 
 
 def prepare_certificate_data(claim):
-    """Parse claim data to generate certificate data."""
-    return {
-        "year_of_graduation": claim.year_of_graduation,
-        "student_number": claim.student_number,
-        "name": claim.full_name,
-        "course_details": "Bachelor of Science in Computer Science",
-        "issuer": "University Name",
-        "date_of_issue": "2024-08-15"
+    """Generate a PDF certificate from the claim data."""
+
+    # Claim data (assuming claim is passed as a dictionary with required fields)
+    certificate_data = {
+        "year_of_graduation": claim['year_of_graduation'],
+        "student_number": claim['student_number'],
+        "name": claim['full_name'],
+        "course_details": "Bachelor of Science in Computer Science",  # Example course
+        "issuer": "University Name",  # Example issuer
+        "date_of_issue": datetime.date.today().strftime('%Y-%m-%d')
     }
+
+    # Generate the PDF
+    buffer = BytesIO()
+    pdf = canvas.Canvas(buffer, pagesize=A4)
+
+    # Formatting for the PDF (Centered and styled for certificate appearance)
+    pdf.setTitle("Certificate of Graduation")
+    pdf.setFont("Helvetica-Bold", 24)
+    pdf.drawCentredString(300, 770, "Certificate of Graduation")
+
+    pdf.setFont("Helvetica", 18)
+    pdf.drawCentredString(300, 700, f"Presented to: {certificate_data['name']}")
+    pdf.drawCentredString(300, 660, f"Student Number: {certificate_data['student_number']}")
+
+    pdf.setFont("Helvetica", 16)
+    pdf.drawCentredString(300, 620, f"Course: {certificate_data['course_details']}")
+    pdf.drawCentredString(300, 580, f"Year of Graduation: {certificate_data['year_of_graduation']}")
+
+    pdf.setFont("Helvetica", 14)
+    pdf.drawCentredString(300, 540, f"Issued by: {certificate_data['issuer']}")
+    pdf.drawCentredString(300, 500, f"Date of Issue: {certificate_data['date_of_issue']}")
+
+    # Add a line for the signature
+    pdf.line(220, 440, 380, 440)  # Signature line
+    pdf.setFont("Helvetica", 12)
+    pdf.drawCentredString(300, 420, "Signature")
+
+    pdf.showPage()
+    pdf.save()
+
+    buffer.seek(0)
+
+    # Return the certificate data and the buffer (PDF file)
+    return certificate_data, buffer
+    #return FileResponse(buffer, as_attachment=True, filename=f"{certificate_data['name']}_certificate.pdf")
 
 def generate_certificate_hash(certificate_data):
     """Convert certificate data to a hash for signing."""
     certificate_json = json.dumps(certificate_data)
     return hashlib.sha256(certificate_json.encode()).hexdigest()
 
+
 def sign_certificate_view(request):
-    """Handle the certificate signing view."""
+    """Handle the certificate signing, generate PDF and certificate hash."""
     if request.method == 'POST':
         claim_id = request.POST.get('claim_id')
         claim = Claim.objects.get(id=claim_id)
 
-        # Prepare certificate data
-        certificate_data = prepare_certificate_data(claim)
+        # Fetch the claim data from IPFS (retrieved as a string)
+        claim_data_string = get_decrypted_data_from_ipfs(claim.ipfs_hash, request.user)
+
+        if not claim_data_string:
+            return JsonResponse({'error': 'Failed to retrieve data from IPFS'}, status=500)
+
+        # Parse the claim data string (assuming it's comma-separated)
+        claim_data_parts = claim_data_string.split(',')
+
+        # Adjust the parts to match the required fields (modify this based on the actual structure)
+        claim_data = {
+            "year_of_graduation": claim_data_parts[0],
+            "student_number": claim_data_parts[1],
+            "full_name": claim_data_parts[2],
+            "course_details": "Bachelor of Science in Computer Science",  # Example course
+            "issuer": "University Name",  # Example issuer
+            "date_of_issue": datetime.date.today().strftime('%Y-%m-%d')
+        }
+
+        # Prepare certificate PDF and data
+        certificate_data, certificate_pdf_buffer = prepare_certificate_data(claim_data)
+
+        # Generate a certificate hash
         certificate_hash = generate_certificate_hash(certificate_data)
+        certificate_pdf_base64 = base64.b64encode(certificate_pdf_buffer.getvalue()).decode('utf-8')
 
         # Encode the certificate hash for Ethereum
         message = encode_defunct(hexstr=certificate_hash)
 
+        # Save the generated PDF file to a local directory
+        pdf_filename = f"{claim_data['full_name']}_certificate.pdf"
+        pdf_path = os.path.join(settings.BASE_DIR, pdf_filename)  # Make sure this path exists
+        with open(pdf_path, 'wb') as f:
+            f.write(certificate_pdf_buffer.getvalue())
+
+        # Return the certificate file and hash
         return JsonResponse({
             "certificate_hash": Web3.to_hex(message.body),
-            "certificate_data": certificate_data
+            "certificate_file": pdf_filename,  # Return the filename for download
+            "certificate_pdf_base64": certificate_pdf_base64,
+            "selected_claim_id": claim_id
         })
 
     # Render list of unsigned claims for the authority to choose from
     unsigned_claims = Claim.objects.filter(authority=request.user, signed=False)
-    return render(request, 'sign_certificate.html', {'unsigned_claims': unsigned_claims})
+    user = request.user
+    context = {
+        'is_web3_user': True,
+        'unsigned_claims': unsigned_claims
+    }
+
+    if not user.is_web3_user:
+        context = {
+            'encrypted_private_key': request.user.encrypted_private_key,
+            'is_web3_user': False,
+            'unsigned_claims': unsigned_claims
+        }
+
+    return render(request, 'sign_certificate.html', context)
 
 
 def verify_certificate_signature(request):
@@ -273,24 +365,50 @@ def sign_certificate(request):
 
 
 @csrf_exempt
+@login_required
 def store_signed_certificate(request):
-    """Store the signed certificate in the database."""
+    """Store the signed certificate, upload it to IPFS, and save it in the DB."""
     if request.method == 'POST':
         data = json.loads(request.body)
-        certificate_data = data.get('certificate')
+        certificate_pdf_base64 = data.get('certificate_pdf_base64')  # Get the base64-encoded PDF
         certificate_hash = data.get('certificate_hash')
         signature = data.get('signature')
-        user = request.user  # Assuming the user is authenticated
+        user = request.user  # The user requesting the certificate (the student, for example)
+        claim_id = data.get('selected_claim_id')  # Get the claim ID passed from the frontend
+
+        # Decode the base64-encoded PDF back to bytes
+        certificate_pdf_bytes = base64.b64decode(certificate_pdf_base64)
+        certificate_pdf_buffer = BytesIO(certificate_pdf_bytes)
+
+        # Upload the PDF to IPFS
+        ipfs_hash = upload_to_ipfs(certificate_pdf_buffer)
+
+        # Get the claim and authority from the database
+        claim = Claim.objects.get(id=claim_id)
+        authority = claim.authority
+
+        if claim.authority != request.user:
+            return JsonResponse({'error': 'Unauthorized: You are not the authority for this claim.'}, status=403)
 
         # Save the signed certificate to the database
         certificate = Certificate.objects.create(
-            user=user,
-            certificate_data=certificate_data,
-            certificate_hash=certificate_hash,
-            signature=signature
+            user=user,  # The user (recipient of the certificate)
+            authority=authority,  # The authority issuing the certificate
+            claim=claim,  # Link the claim to the certificate
+            ipfs_hash=ipfs_hash,  # IPFS hash of the uploaded PDF
+            certificate_hash=certificate_hash, # Certificate hash
+            signature=signature  # The digital signature from the signing
         )
 
-        return JsonResponse({'status': 'success', 'message': 'Certificate signed and stored successfully.', 'certificate_id': certificate.id})
+        # Mark the claim as signed
+        claim.signed = True
+        claim.save()
+
+        return JsonResponse({
+            'status': 'success',
+            'message': 'Certificate signed and stored successfully.',
+            'certificate_id': certificate.id
+        })
 
     return JsonResponse({'status': 'error', 'message': 'Invalid request method.'}, status=405)
 

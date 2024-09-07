@@ -102,7 +102,8 @@ class Claim(models.Model):
     requester = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='claims')
     authority = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='authorities')
     ipfs_hash = models.CharField(max_length=255)
-    transaction_hash = models.CharField(max_length=66)
+    transaction_hash = models.CharField(max_length=1500)
+    created_at = models.DateTimeField(auto_now_add=True)
     signed = models.BooleanField(default=False)
 
     def __str__(self):
@@ -110,10 +111,11 @@ class Claim(models.Model):
 
 
 class Certificate(models.Model):
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    authority = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='issued_certificates', on_delete=models.CASCADE)
-    claim = models.OneToOneField('Claim', on_delete=models.CASCADE)
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
+    authority = models.ForeignKey(CustomUser, related_name='issued_certificates', on_delete=models.CASCADE)
+    claim = models.OneToOneField(Claim, on_delete=models.CASCADE)
     ipfs_hash = models.CharField(max_length=255)
+    certificate_hash = models.CharField(max_length=255)
     signature = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
 

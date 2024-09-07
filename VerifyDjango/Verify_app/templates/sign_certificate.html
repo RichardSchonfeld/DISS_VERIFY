@@ -65,6 +65,11 @@
                 document.getElementById('sign-button').addEventListener('click', async () => {
                     const isWeb3User = {{ user.is_web3_user|lower }};
                     const certificatePdfBase64 = data.certificate_pdf_base64;
+                    const certificateData = data.certificate_data;
+                    const certificateHash = data.certificate_hash;
+                    const selectedClaimId = document.getElementById('claim').value;
+
+                    console.log("SELECTED CLAIM ID: " + selectedClaimId)
 
                     try {
                         if (isWeb3User) {
@@ -73,13 +78,13 @@
                             const account = (await web3.eth.getAccounts())[0];
 
                             // Sign the hash using MetaMask
-                            web3.eth.personal.sign(data.certificate_hash, account, async (err, signature) => {
+                            web3.eth.personal.sign(certificateHash, account, async (err, signature) => {
                                 if (err) {
                                     console.error('MetaMask signing failed', err);
                                     return;
                                 }
-                                // After signing, upload to IPFS and submit the hash
-                                await handleIpfsUploadAndSubmit(certificatePdfBase64, signature, data.certificate_data, data.certificate_hash);
+                                // Submit the signed certificate and base64 PDF to the backend
+                                await submitSignedCertificate(certificatePdfBase64, signature, certificateData, certificateHash);
                             });
                         } else {
                             const encryptedPrivateKey = document.getElementById('encrypted_private_key').value;
@@ -88,10 +93,10 @@
 
                             const web3 = new Web3();
                             const privateKeyObject = web3.eth.accounts.privateKeyToAccount(decryptedPrivateKey);
-                            const signature = privateKeyObject.sign(data.certificate_hash).signature;
+                            const signature = privateKeyObject.sign(certificateHash).signature;
 
-                            // After signing, upload to IPFS and submit the hash
-                            await handleIpfsUploadAndSubmit(certificatePdfBase64, signature, data.certificate_data, data.certificate_hash);
+                            // Submit the signed certificate and base64 PDF to the backend
+                            await submitSignedCertificate(certificatePdfBase64, signature, certificateData, certificateHash, selectedClaimId);
                         }
                     } catch (error) {
                         console.error('Submit signature failed:', error);
@@ -102,19 +107,18 @@
             }
         });
 
-
-
-        function submitSignature(ipfsHash, signature, certificateData, certificateHash) {
+        function submitSignedCertificate(certificatePdfBase64, signature, certificateData, certificateHash, selectedClaimId) {
             return fetch('/store-signed-certificate/', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    certificate: certificateData,
+                    certificate_pdf_base64: certificatePdfBase64,
+                    certificate_data: certificateData,
                     certificate_hash: certificateHash,
-                    ipfs_hash: ipfsHash,
-                    signature: signature
+                    signature: signature,
+                    selected_claim_id: selectedClaimId
                 })
             })
             .then(response => response.json())
