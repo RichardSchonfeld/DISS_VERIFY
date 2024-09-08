@@ -14,7 +14,7 @@
         {% csrf_token %}
 
         <!-- Hidden field to hold the transaction data -->
-        <input type="hidden" id="transaction_data" value='{{ transaction_data|safe }}'>
+        <input type="hidden" id="transaction_data" value='{{ transaction_data|escapejs }}'>
         <input type="hidden" id="claim_data" value='{{ claim_data|safe }}'>
 
         <!-- Django user specific fields -->
@@ -30,9 +30,12 @@
 <script>
     async function signAndSubmitClaim() {
         try {
-            const isWeb3User = {{ user.is_web3_user|lower }};
-            const transactionData = JSON.parse(document.getElementById('transaction_data').value);
+            const isWeb3User = {{ user.is_web3_user|lower }}; // This is True for MetaMask users and False for Django users
+            // Prepare the transaction data
+            let transactionData = document.getElementById('transaction_data').value;
             const claimData = JSON.parse(document.getElementById('claim_data').value);
+            // Fix JSON parsing issue by ensuring proper formatting
+            transactionData = JSON.parse(transactionData.replace(/\\u0022/g, '"'));
 
             if (isWeb3User) {
                 // MetaMask User Flow
@@ -45,7 +48,7 @@
                 // Send the transaction directly with MetaMask (no private key involved here)
                 const txnParams = {
                     from: account,
-                    to: transactionData.to,
+                    to: transactionData.to, // Ensure to include the correct 'to' address in the transaction data
                     gas: transactionData.gas,
                     gasPrice: transactionData.gasPrice,
                     data: transactionData.data,
@@ -55,7 +58,7 @@
                 // Sign and send the transaction with MetaMask
                 const txnHash = await web3.eth.sendTransaction(txnParams);
 
-                // Submit the transaction hash and claim data to the server
+                // Submit the transaction hash to the server
                 await submitSignedTransaction(txnHash.transactionHash, claimData);
             } else {
                 // Django User Flow
@@ -70,7 +73,7 @@
                     // Sign the transaction
                     const signedTransaction = await web3.eth.accounts.signTransaction(transactionData, privateKey);
 
-                    // Submit the signed transaction and claim data to the server
+                    // Submit the signed transaction to the server
                     await submitSignedTransaction(signedTransaction.rawTransaction, claimData);
                 } catch (error) {
                     console.error('Private key transaction signing failed:', error);
@@ -85,10 +88,8 @@
     async function submitSignedTransaction(transactionHashOrRawTransaction, claimData) {
         try {
             const isWeb3User = {{ user.is_web3_user|lower }};
-            const payload = {
-                txnHash: transactionHashOrRawTransaction,
-                claim_data: claimData  // Pass claim data back to the backend
-            };
+            const payload = isWeb3User ? { txnHash: transactionHashOrRawTransaction } : { signedTransaction: transactionHashOrRawTransaction };
+            payload.claimData = claimData;
 
             const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
 
@@ -117,3 +118,4 @@
 </script>
 </body>
 </html>
+

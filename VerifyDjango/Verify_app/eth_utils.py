@@ -59,11 +59,8 @@ def get_claim():
         claims.append({
             'requester': claim[0],
             'authority': claim[1],
-            'year_of_graduation': claim[2],
-            'student_number': claim[3],
-            'full_name': claim[4],
-            'ipfs_hash': claim[5],
-            'signed': claim[6],
+            'ipfs_hash': claim[2],
+            'signed': claim[3],
         })
 
     return claims
@@ -71,7 +68,7 @@ def get_claim():
 
 
 def fund_account(new_account_address):
-    preset_account_address = '0x148bB7d17fE7DCd704660b79E9C006d71FCC65F9'
+    preset_account_address = '0x1134a3a0aED4AbcA0B9dFF2F2B92A92CB9beCfc4'
     preset_private_key = os.getenv('FUND_TEST_PRIVATE_KEY')
 
     # Define the amount of Ether to send (in Wei)
@@ -109,6 +106,29 @@ def create_new_eth_account():
     # We encrypt using their wallet keys if they have a wallet (the key fragments themselves)
         # Otherwise we use auto-generated keys encrypted with user passwords
 
+
+def mint_nft(claim_id, user_address, token_uri):
+    """
+    Function to mint an NFT using the VerifyNFT contract.
+    """
+    account = web3.eth.account.from_key(private_key)
+    nonce = web3.eth.getTransactionCount(account.address)
+
+    transaction = verify_nft_contract.functions.mintNFT(
+        claim_id,
+        Web3.toChecksumAddress(user_address),
+        token_uri
+    ).buildTransaction({
+        'chainId': 1,  # Replace with your network chain ID
+        'gas': 500000,
+        'gasPrice': web3.toWei('20', 'gwei'),
+        'nonce': nonce
+    })
+
+    signed_txn = web3.eth.account.signTransaction(transaction, private_key=private_key)
+    txn_hash = web3.eth.sendRawTransaction(signed_txn.rawTransaction)
+
+    return txn_hash.hex()
 
 
 """def prepare_transaction_data(request):

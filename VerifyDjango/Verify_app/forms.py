@@ -36,7 +36,7 @@ def get_authority_name_from_address(address):
 import json
 def save_claim_to_django_DB(request, transaction_hash):
     try:
-        data = json.loads(request.body.decode('utf-8')).get('claim_data')
+        data = json.loads(request.body.decode('utf-8')).get('claimData')
         # Get the authority user based on the provided address
         authority_address = data.get('authority')
         authority_user = CustomUser.objects.get(address=authority_address)

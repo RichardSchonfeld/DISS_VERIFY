@@ -54,6 +54,8 @@
 
             if (response.ok) {
                 const data = await response.json();
+
+                // Display the certificate data
                 document.getElementById('certificate-data').textContent = JSON.stringify(data.certificate_data, null, 2);
                 document.getElementById('certificate-container').style.display = 'block';
                 document.getElementById('sign-button').style.display = 'block';
@@ -61,45 +63,74 @@
                 // Show the PDF preview or download link
                 displayPdfPreview(data.certificate_pdf_base64);
 
-                // Handle the signing using MetaMask or decrypted private key
+                // Store the transaction and certificate hash for signing
+                const transactionData = JSON.parse(data.transaction);
+                const certificateHash = data.certificate_hash;
+                const selectedClaimId = data.selected_claim_id;
+                const contractAbi = data.contract_abi;  // Contract ABI from backend
+                const contractAddress = data.contract_address;  // Contract address from backend
+
+                // Initialize Web3
+                const web3 = new Web3(window.ethereum || new Web3.providers.HttpProvider('http://localhost:8545'));
+                const contract = new web3.eth.Contract(contractAbi, contractAddress);
+
+                // Prepare the signing process when the user clicks the "Sign Certificate" button
                 document.getElementById('sign-button').addEventListener('click', async () => {
                     const isWeb3User = {{ user.is_web3_user|lower }};
-                    const certificatePdfBase64 = data.certificate_pdf_base64;
-                    const certificateData = data.certificate_data;
-                    const certificateHash = data.certificate_hash;
-                    const selectedClaimId = document.getElementById('claim').value;
-
-                    console.log("SELECTED CLAIM ID: " + selectedClaimId)
-
                     try {
                         if (isWeb3User) {
-                            const web3 = new Web3(window.ethereum);
+                            // MetaMask user flow
                             await ethereum.request({ method: 'eth_requestAccounts' });
                             const account = (await web3.eth.getAccounts())[0];
 
-                            // Sign the hash using MetaMask
-                            web3.eth.personal.sign(certificateHash, account, async (err, signature) => {
-                                if (err) {
-                                    console.error('MetaMask signing failed', err);
-                                    return;
-                                }
-                                // Submit the signed certificate and base64 PDF to the backend
-                                await submitSignedCertificate(certificatePdfBase64, signature, certificateData, certificateHash);
+                            // Sign the certificate hash using MetaMask
+                            const signature = await web3.eth.personal.sign(certificateHash, account);
+
+                            // Send the transaction to the contract
+                            const txnHash = await contract.methods.signClaim(selectedClaimId, certificateHash, signature).send({
+                                from: account,
+                                gas: transactionData.gas,
+                                gasPrice: transactionData.gasPrice
                             });
+
+                            // Submit the signed certificate and transaction hash to the backend
+                            await submitSignedCertificate(data.certificate_pdf_base64, signature, certificateHash, selectedClaimId, txnHash.transactionHash);
+
                         } else {
+                            // Non-Web3 user flow (local signing)
                             const encryptedPrivateKey = document.getElementById('encrypted_private_key').value;
                             const password = document.getElementById('password').value;
                             const decryptedPrivateKey = await decryptPrivateKey(encryptedPrivateKey, password);
 
-                            const web3 = new Web3();
                             const privateKeyObject = web3.eth.accounts.privateKeyToAccount(decryptedPrivateKey);
+
+                            // Sign the certificate hash with the decrypted private key
                             const signature = privateKeyObject.sign(certificateHash).signature;
 
-                            // Submit the signed certificate and base64 PDF to the backend
-                            await submitSignedCertificate(certificatePdfBase64, signature, certificateData, certificateHash, selectedClaimId);
+                            console.log("SEL" + selectedClaimId);
+                            var selectedClaimIds = 7;
+                            console.log(selectedClaimIds);
+                            // Encode transaction data
+                            const txnData = contract.methods.signClaim(selectedClaimIds, certificateHash, signature).encodeABI();
+
+                            // Build and sign the transaction
+                            const tx = {
+                                from: privateKeyObject.address,
+                                to: contractAddress,
+                                gas: transactionData.gas,
+                                gasPrice: transactionData.gasPrice,
+                                data: txnData
+                            };
+
+                            const signedTransaction = await web3.eth.accounts.signTransaction(tx, decryptedPrivateKey);
+                            const txnReceipt = await web3.eth.sendSignedTransaction(signedTransaction.rawTransaction);
+
+                            // Submit the signed certificate and transaction hash to the backend
+                            await submitSignedCertificate(data.certificate_pdf_base64, signature, certificateHash, selectedClaimId, txnReceipt.transactionHash);
                         }
                     } catch (error) {
-                        console.error('Submit signature failed:', error);
+                        console.error('Signing failed:', error);
+                        alert('Error occurred during signing.');
                     }
                 });
             } else {
@@ -107,39 +138,40 @@
             }
         });
 
-        function submitSignedCertificate(certificatePdfBase64, signature, certificateData, certificateHash, selectedClaimId) {
-            return fetch('/store-signed-certificate/', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    certificate_pdf_base64: certificatePdfBase64,
-                    certificate_data: certificateData,
-                    certificate_hash: certificateHash,
-                    signature: signature,
-                    selected_claim_id: selectedClaimId
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
-                console.log('Success:', data);
-            })
-            .catch((error) => {
-                console.error('Error:', error);
-            });
+        async function submitSignedCertificate(certificatePdfBase64, signature, certificateHash, selectedClaimId, txnHash) {
+            try {
+                const response = await fetch('/store-signed-certificate/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        certificate_pdf_base64: certificatePdfBase64,
+                        certificate_hash: certificateHash,
+                        signature: signature,
+                        selected_claim_id: selectedClaimId,
+                        txn_hash: txnHash
+                    })
+                });
+
+                if (response.ok) {
+                    alert('Certificate signed and submitted successfully!');
+                    window.location.href = '/';
+                } else {
+                    alert('Failed to submit the signed certificate.');
+                }
+            } catch (error) {
+                console.error('Error submitting signed certificate:', error);
+            }
         }
 
         // Function to display PDF in-browser or as a downloadable link
         function displayPdfPreview(base64Pdf) {
             const pdfBlob = base64ToBlob(base64Pdf, 'application/pdf');
-
-            // Display PDF in an <embed> tag
             const pdfPreview = document.getElementById('pdf-preview');
             pdfPreview.src = URL.createObjectURL(pdfBlob);
             pdfPreview.style.display = 'block';
 
-            // Create a downloadable link
             const downloadLink = document.getElementById('pdf-download-link');
             downloadLink.href = URL.createObjectURL(pdfBlob);
             downloadLink.style.display = 'block';

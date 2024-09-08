@@ -97,8 +97,6 @@ def encrypt_and_split(data):
     # Generate Shamir's Secret Shares (2-of-3 scheme)
     shares = Shamir.split(2, 3, key)
 
-    write_shares_to_local_file(shares)
-
     return encrypted_data, shares
 
 # Function to decrypt data using Shamir's Secret Shares

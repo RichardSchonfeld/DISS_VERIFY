@@ -133,12 +133,35 @@ def create_claim(request):
             user_profile = request.user
             wallet_address = Web3.to_checksum_address(user_profile.address)
 
+            # Distributing keys
+
+            # First the requester (claimant)
+            # claimant_share = encrypt_with_public_key(repr(shares[0]), user_profile.public_key)
+            # Then the server (Dapp)
+            # server_share = encrypt_with_public_key(repr(shares[0]), settings.PUBLIC_KEY)
+            # Finally the Authority
+            # authority_share = encrypt_with_public_key(repr(shares[0]), authority_public_key)
+
+            ### Above for encryption that needs resolution - TBI
+
+            claimant_share = shares[0]
+            server_share = shares[1]
+            authority_share = shares[2]
+
+            # Storing
+            store_key_fragment(user_profile, claimant_share, IPFS_hash)
+
+            server_user = get_user_by_address(settings.SERVER_OP_ACC_ADDRESS)
+            store_key_fragment(server_user, server_share, IPFS_hash)
+
+            authority_user = get_user_by_address(authority_address)
+            store_key_fragment(authority_user, authority_share, IPFS_hash)
+
+            wallet_address = Web3.to_checksum_address(user_profile.address)
+
             transaction = verify_contract_instance.functions.createClaim(
                 _requester=wallet_address,
                 _authority=authority_address,
-                _yearOfGraduation=year_of_graduation,
-                _studentNumber=student_number,
-                _fullName=full_name,
                 _ipfsHash=IPFS_hash
             ).build_transaction({
                 'chainId': 1337,  # Ganache
@@ -239,16 +262,14 @@ def sign_certificate_view(request):
         if not claim_data_string:
             return JsonResponse({'error': 'Failed to retrieve data from IPFS'}, status=500)
 
-        # Parse the claim data string (assuming it's comma-separated)
+        # Prepare claim data (adjust this to match the actual data structure)
         claim_data_parts = claim_data_string.split(',')
-
-        # Adjust the parts to match the required fields (modify this based on the actual structure)
         claim_data = {
             "year_of_graduation": claim_data_parts[0],
             "student_number": claim_data_parts[1],
             "full_name": claim_data_parts[2],
-            "course_details": "Bachelor of Science in Computer Science",  # Example course
-            "issuer": "University Name",  # Example issuer
+            "course_details": "Bachelor of Science in Computer Science",
+            "issuer": "University Name",
             "date_of_issue": datetime.date.today().strftime('%Y-%m-%d')
         }
 
@@ -257,39 +278,45 @@ def sign_certificate_view(request):
 
         # Generate a certificate hash
         certificate_hash = generate_certificate_hash(certificate_data)
-        certificate_pdf_base64 = base64.b64encode(certificate_pdf_buffer.getvalue()).decode('utf-8')
-
-        # Encode the certificate hash for Ethereum
         message = encode_defunct(hexstr=certificate_hash)
 
-        # Save the generated PDF file to a local directory
-        pdf_filename = f"{claim_data['full_name']}_certificate.pdf"
-        pdf_path = os.path.join(settings.BASE_DIR, pdf_filename)  # Make sure this path exists
-        with open(pdf_path, 'wb') as f:
-            f.write(certificate_pdf_buffer.getvalue())
+        # Prepare the transaction data for blockchain signing
+        web3 = Web3(Web3.HTTPProvider('http://localhost:8545'))
+        contract_address = settings.CONTRACT_ADDRESS
+        with open('build/contracts/Verify.json') as f:
+            contract_data = json.load(f)
+            contract_abi = contract_data['abi']
+        verify_contract_instance = web3.eth.contract(address=contract_address, abi=contract_abi)
 
-        # Return the certificate file and hash
-        return JsonResponse({
-            "certificate_hash": Web3.to_hex(message.body),
-            "certificate_file": pdf_filename,  # Return the filename for download
-            "certificate_pdf_base64": certificate_pdf_base64,
-            "selected_claim_id": claim_id
+        transaction = verify_contract_instance.functions.signClaim(
+            (int(claim_id) - 1),
+            certificate_hash,
+            "0x"  # Placeholder for the signature, to be replaced in the frontend
+        ).build_transaction({
+            'chainId': 1337,
+            'gas': 500000,
+            'gasPrice': web3.to_wei('50', 'gwei'),
+            'nonce': web3.eth.get_transaction_count(request.user.address)
         })
 
-    # Render list of unsigned claims for the authority to choose from
-    unsigned_claims = Claim.objects.filter(authority=request.user, signed=False)
-    user = request.user
-    context = {
-        'is_web3_user': True,
-        'unsigned_claims': unsigned_claims
-    }
+        # Return the certificate data, certificate hash, and transaction for signing in the frontend
+        return JsonResponse({
+            "transaction": json.dumps(transaction),
+            "certificate_hash": Web3.to_hex(message.body),
+            "certificate_pdf_base64":  base64.b64encode(certificate_pdf_buffer.getvalue()).decode('utf-8'),
+            "selected_claim_id": claim_id,
+            "contract_abi": contract_abi,
+            "contract_address": contract_address
+        })
 
-    if not user.is_web3_user:
-        context = {
-            'encrypted_private_key': request.user.encrypted_private_key,
-            'is_web3_user': False,
-            'unsigned_claims': unsigned_claims
-        }
+    # Render list of unsigned claims
+    unsigned_claims = Claim.objects.filter(authority=request.user, signed=False)
+    context = {
+        'unsigned_claims': unsigned_claims,
+        'is_web3_user': request.user.is_web3_user,
+    }
+    if not request.user.is_web3_user:
+        context['encrypted_private_key'] = request.user.encrypted_private_key
 
     return render(request, 'sign_certificate.html', context)
 
@@ -315,54 +342,6 @@ def verify_certificate_signature(request):
             return JsonResponse({'status': 'error', 'message': f'Error: {str(e)}'}, status=500)
 
     return render(request, 'verify_signature.html')
-
-#### DOUBLE CHECK IF CSRF EXEMPT IS OKAY HERE ####
-@csrf_exempt
-@login_required
-def sign_certificate(request):
-    """Handle certificate signing and storage."""
-    if request.method == 'POST':
-        # Get POST data
-        ipfs_hash = request.POST.get('ipfs_hash')
-        share1 = request.POST.get('share1')
-        share2 = request.POST.get('share2')
-
-        try:
-            # Decrypt IPFS data
-            decrypted_data = get_ipfs_decrypted_data(ipfs_hash, share1, share2)
-
-            # Parse the decrypted data to form the certificate structure
-            certificate_data = parse_json_decrypted_ipfs_data(decrypted_data)
-
-            # Prepare certificate data
-            certificate_json = json.dumps(certificate_data)
-            certificate_hash = hashlib.sha256(certificate_json.encode()).hexdigest()
-
-            # Encode the hash as an Ethereum message
-            message = encode_defunct(hexstr=certificate_hash)
-
-            # Return the certificate data and the encoded message hash for signing
-            return JsonResponse({
-                "certificate_hash": Web3.to_hex(message.body),  # This ensures the correct Ethereum-prefixed hash
-                "certificate_data": certificate_data
-            })
-
-        except Exception as e:
-            return JsonResponse({"error": str(e)}, status=500)
-
-    # Render the signing page for GET requests
-    user = request.user
-    context = {
-        'is_web3_user': True
-    }
-
-    if not user.is_web3_user:
-        context = {
-            'encrypted_private_key': request.user.encrypted_private_key,
-            'is_web3_user': False
-        }
-    return render(request, 'sign_certificate.html', context)
-
 
 @csrf_exempt
 @login_required
@@ -492,11 +471,8 @@ def user_profile_view(request):
                 'claim_id': claim_id,
                 'requester': claim[0],
                 'authority': authority_name,  # Use the resolved authority name
-                'year_of_graduation': claim[2],
-                'student_number': claim[3],
-                'full_name': claim[4],
-                'ipfs_hash': claim[5],
-                'signed': claim[6],
+                'ipfs_hash': claim[2],
+                'signed': claim[3],
             })
 
         return render(request, 'user_profile.html', {'claims': claims})
@@ -524,19 +500,16 @@ def claim_detail_view(request, claim_id):
         # Retrieve the specific claim
         claim = verify_contract_instance.functions.getClaim(claim_id).call()
 
-        ipfs_hash = claim[5]
+        ipfs_hash = claim[2]
         decrypted_data = get_decrypted_data_from_ipfs(ipfs_hash, request.user)
 
         claim_detail = {
             'claim_id': claim_id,
             'requester': claim[0],
             'authority': claim[1],
-            'year_of_graduation': claim[2],
-            'student_number': claim[3],
-            'full_name': claim[4],
-            'ipfs_hash': claim[5],
+            'ipfs_hash': claim[2],
             'decrypted_data': decrypted_data,
-            'signed': claim[6],
+            'signed': claim[3],
         }
 
         return render(request, 'claim_detail.html', {'claim': claim_detail})
