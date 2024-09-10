@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity >=0.5.16 <0.8.0;
+pragma solidity ^0.8.0;
 
 // Used to deploy smart contract to a local BC n make it interactable
 

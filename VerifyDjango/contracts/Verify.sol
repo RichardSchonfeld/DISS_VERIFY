@@ -1,4 +1,4 @@
-pragma solidity ^0.5.4;
+pragma solidity ^0.8.0;
 
 contract Verify {
     struct ClaimData {
@@ -14,14 +14,15 @@ contract Verify {
     uint256 public claimCount;
 
     event ClaimCreated(uint256 indexed claimId, address indexed initiator, address indexed authority, string ipfsHash);
-    event ClaimSigned(uint256 indexed claimId, address indexed authority, string signature);  // Adjusted event types
+    event ClaimSigned(uint256 indexed claimId, address indexed authority, string signature);
 
     function createClaim(
         address _requester,
         address _authority,
         string memory _ipfsHash
     ) public {
-        claimCount++;
+        claimCount += 1;
+
         claims[claimCount] = ClaimData({
             requester: _requester,
             authority: _authority,
@@ -38,17 +39,17 @@ contract Verify {
 
     function signClaim(
         uint256 _claimId,
-        string memory _signature           // Changed to string
+        string memory _signature
     ) public {
         ClaimData storage claim = claims[_claimId];
         require(msg.sender == claim.authority, "Only the designated authority can sign this claim");
         require(!claim.signed, "Claim is already signed");
 
-        // Update the claim data with the certificate hash and signature
+        // Update the claim data with the signature
         claim.signed = true;
-        claim.signature = _signature;       // Set string value
+        claim.signature = _signature;
 
-        // Emit event for the signed claim with the string values
+        // Emit event for the signed claim
         emit ClaimSigned(_claimId, msg.sender, _signature);
     }
 
@@ -56,7 +57,7 @@ contract Verify {
         ClaimData storage claim = claims[_claimId];
         require(claim.signed, "Claim not signed");
 
-        return (claim.signature);
+        return claim.signature;
     }
 
     function getClaim(uint256 _claimId) public view returns (

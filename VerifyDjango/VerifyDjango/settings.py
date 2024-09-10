@@ -88,6 +88,7 @@ STATICFILES_DIRS = [BASE_DIR / "static"]
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Infura API variables
+INFURA_TEST_URL = 'https://sepolia.infura.io/v3/' + os.getenv('INFURA_NETWORK_ID')
 INFURA_API_KEY = os.getenv('INFURA_API_KEY')
 INFURA_API_SECRET = os.getenv('INFURA_API_KEY_SECRET')
 
