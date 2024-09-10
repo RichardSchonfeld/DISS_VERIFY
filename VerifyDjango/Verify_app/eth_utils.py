@@ -68,11 +68,11 @@ def get_claim():
 
 
 def fund_account(new_account_address):
-    preset_account_address = '0x1134a3a0aED4AbcA0B9dFF2F2B92A92CB9beCfc4'
+    preset_account_address = '0x0dAD17E4C8E3d3290073b69971B5b11988AAdc62'
     preset_private_key = os.getenv('FUND_TEST_PRIVATE_KEY')
 
     # Define the amount of Ether to send (in Wei)
-    initial_balance = web3.to_wei(0.1, 'ether')  # Sending 0.01 Ether to the new account
+    initial_balance = web3.to_wei(0.25, 'ether')  # Sending 0.01 Ether to the new account
 
     # Get the nonce for the transaction
     nonce = web3.eth.get_transaction_count(Web3.to_checksum_address(preset_account_address))
@@ -129,6 +129,30 @@ def mint_nft(claim_id, user_address, token_uri):
     txn_hash = web3.eth.sendRawTransaction(signed_txn.rawTransaction)
 
     return txn_hash.hex()
+
+
+def extract_claim_id_from_receipt(receipt):
+    # Assuming the event 'ClaimCreated' is emitted by your contract when a claim is created
+    claim_created_event_abi = {
+        "anonymous": False,
+        "inputs": [
+            {"indexed": True, "name": "_claimId", "type": "bytes32"},
+            {"indexed": True, "name": "_requester", "type": "address"},
+            {"indexed": True, "name": "_authority", "type": "address"},
+            {"indexed": False, "name": "_ipfsHash", "type": "string"}
+        ],
+        "name": "ClaimCreated",
+        "type": "event"
+    }
+
+    event_signature_hash = web3.keccak(text='ClaimCreated(uint256,address,address,string)')
+
+    for log in receipt['logs']:
+        if log['topics'][0] == event_signature_hash:
+            claim_id = Web3.to_hex(log['topics'][1])  # Extract the claim ID from the first topic
+            return claim_id.lstrip('0x').lstrip('0')
+
+    raise Exception("ClaimCreated event not found in transaction receipt")
 
 
 """def prepare_transaction_data(request):

@@ -99,6 +99,7 @@ class KeyFragment(models.Model):
 
 
 class Claim(models.Model):
+    claim_id = models.IntegerField(blank=False, null=False)
     requester = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='claims')
     authority = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='authorities')
     ipfs_hash = models.CharField(max_length=255)
@@ -111,13 +112,22 @@ class Claim(models.Model):
 
 
 class Certificate(models.Model):
-    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
-    authority = models.ForeignKey(CustomUser, related_name='issued_certificates', on_delete=models.CASCADE)
-    claim = models.OneToOneField(Claim, on_delete=models.CASCADE)
-    ipfs_hash = models.CharField(max_length=255)
-    certificate_hash = models.CharField(max_length=255)
-    signature = models.TextField()
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='certificates')
+    authority = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='issued_certificates')
+    claim = models.ForeignKey(Claim, on_delete=models.CASCADE)
+
+    ipfs_hash = models.CharField(max_length=255, blank=True, null=True)  # Optional, if used with IPFS
+    certificate_hash = models.CharField(max_length=255, blank=True, null=True)  # Hash of the certificate
+    signature = models.TextField(blank=True, null=True)  # The digital signature
+
+    file = models.FileField(upload_to='certificates/', blank=True, null=True)  # Store the actual certificate PDF
+
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Certificate'
+        verbose_name_plural = 'Certificates'
 
     def __str__(self):
         return f"Certificate for {self.user.username} issued by {self.authority.username}"

@@ -17,7 +17,7 @@ urlpatterns = [
     path('decrypt-claim-data/', decrypt_claim, name='decrypt-claim-data'),
     path('sign-certificate/', sign_certificate_view, name='sign_certificate'),
     path('store-signed-certificate/', store_signed_certificate, name='store_signed_certificate'),
-    path('verify-signature/', verify_certificate_signature, name="verify_signature"),
+    path('verify-signature/', verify_signature, name="verify_signature"),
     path('user-profile/', user_profile_view, name="user-profile"),
     path('claim/<int:claim_id>/', claim_detail_view, name='claim-detail'),
 ]

@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verify Certificate</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            background-color: #f0f0f0;
+            padding: 10px;
+            text-align: center;
+            position: relative;
+        }
+        .header img {
+            position: absolute;
+            right: 20px;
+            top: 10px;
+        }
+        .button-container {
+            margin-bottom: 20px;
+        }
+        .button-container button {
+            margin: 5px;
+            padding: 10px 20px;
+        }
+        .certificate-preview {
+            width: 400px;
+            height: 400px;
+            border: 1px solid #ccc;
+            text-align: center;
+            line-height: 400px;
+        }
+        .verification-result {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Verify Certificate</h1>
+    </div>
+
+    <div class="container">
+        <form id="verifyForm" method="POST" enctype="multipart/form-data">
+            {% csrf_token %}
+            <div class="button-container">
+                <label for="certificateSelect">Select Certificate:</label>
+                <select id="certificateSelect" name="certificate_id">
+                    <option value="">Select from database</option>
+                    {% for certificate in certificates %}
+                    {% if certificate.file %}
+                    <option value="{{ certificate.id }}" data-url="{{ certificate.file.url }}">
+                        {{ certificate.claim.id }} - {{ certificate.authority.username }}
+                    </option>
+                    {% else %}
+                    <option value="{{ certificate.id }}" disabled>
+                        {{ certificate.claim.id }} - {{ certificate.authority.username }} (No File)
+                    </option>
+                    {% endif %}
+                    {% endfor %}
+                </select>
+                <br>
+                <label for="certificateUpload">Upload Certificate:</label>
+                <input type="file" id="certificateUpload" name="uploaded_certificate">
+            </div>
+
+            <div class="certificate-preview" id="certificatePreview">
+                <p>Certificate preview after upload</p>
+            </div>
+
+            <div class="verification-result">
+                <p>Verified? <span id="verifiedResult"></span></p>
+                <p>Verified by <span id="verifiedBy"></span></p>
+            </div>
+
+            <button type="submit">Verify Certificate</button>
+        </form>
+    </div>
+
+    <script>
+        // Preview PDF when uploaded
+        const certificateUpload = document.getElementById('certificateUpload');
+        const certificatePreview = document.getElementById('certificatePreview');
+
+        certificateUpload.addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const fileURL = URL.createObjectURL(file);
+                certificatePreview.innerHTML = `<iframe src="${fileURL}" width="400" height="400"></iframe>`;
+            }
+        });
+
+        // Preview PDF when selected from dropdown
+        const certificateSelect = document.getElementById('certificateSelect');
+        certificateSelect.addEventListener('change', function() {
+            const selectedOption = certificateSelect.options[certificateSelect.selectedIndex];
+            const fileUrl = selectedOption.getAttribute('data-url');
+            if (fileUrl) {
+                certificatePreview.innerHTML = `<iframe src="${fileUrl}" width="400" height="400"></iframe>`;
+            } else {
+                certificatePreview.innerHTML = `<p>No file available for this certificate.</p>`;
+            }
+        });
+
+        document.getElementById('verifyForm').onsubmit = async function(event) {
+            event.preventDefault();
+
+            const formData = new FormData(document.getElementById('verifyForm'));
+            const response = await fetch("{% url 'verify_signature' %}", {
+                method: 'POST',
+                body: formData
+            });
+            const result = await response.json();
+
+            document.getElementById('verifiedResult').textContent = result.verified ? 'Yes' : 'No';
+            document.getElementById('verifiedBy').textContent = result.verified_by || 'Unknown';
+        };
+    </script>
+</body>
+</html>

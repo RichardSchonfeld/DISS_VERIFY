@@ -1,7 +1,11 @@
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
+from django.conf import settings
 from .models import CustomUser, KeyFragment, Claim
+
+from PyPDF2 import PdfWriter, PdfReader
+
 
 class UserRegisterForm(UserCreationForm):
     email = forms.EmailField()
@@ -21,6 +25,7 @@ class UserRegisterForm(UserCreationForm):
 def store_key_fragment(user, fragmnet_data, ipfs_hash):
     KeyFragment.objects.create(user=user, fragment=fragmnet_data, ipfs_hash=ipfs_hash)
 
+
 def get_user_by_address(address):
     return CustomUser.objects.get(address=address)
 
@@ -33,10 +38,29 @@ def get_authority_name_from_address(address):
         return address
 
 
+def store_and_distribute_key_fragments(shares, user_profile, authority_address, IPFS_hash):
+    claimant_share = shares[0]
+    server_share = shares[1]
+    authority_share = shares[2]
+
+    try:
+        # Storing
+        store_key_fragment(user_profile, claimant_share, IPFS_hash)
+
+        server_user = get_user_by_address(settings.SERVER_OP_ACC_ADDRESS)
+        store_key_fragment(server_user, server_share, IPFS_hash)
+
+        authority_user = get_user_by_address(authority_address)
+        store_key_fragment(authority_user, authority_share, IPFS_hash)
+    except Exception as e:
+        raise Exception(f'Failed to distribute Shamir keys: {str(e)}')
+
+
 import json
-def save_claim_to_django_DB(request, transaction_hash):
+def save_claim_to_django_DB(request, transaction_hash, claim_id):
     try:
         data = json.loads(request.body.decode('utf-8')).get('claimData')
+
         # Get the authority user based on the provided address
         authority_address = data.get('authority')
         authority_user = CustomUser.objects.get(address=authority_address)
@@ -44,6 +68,7 @@ def save_claim_to_django_DB(request, transaction_hash):
 
         # Save the claim to the database
         Claim.objects.create(
+            claim_id=claim_id,  # Use the extracted claim_id
             requester=request.user,
             authority=authority_user,
             ipfs_hash=ipfs_hash,
@@ -58,6 +83,31 @@ def save_claim_to_django_DB(request, transaction_hash):
     except Exception as e:
         raise Exception(f'Failed to save claim: {str(e)}')
 
+
+def embed_metadata(certificate_pdf_bytes, claim_id, authority_address):
+    """
+    Embed claim ID and authority address into the PDF certificate as metadata.
+    """
+    pdf_reader = PdfReader(BytesIO(certificate_pdf_bytes))
+    pdf_writer = PdfWriter()
+
+    # Add metadata
+    metadata = {
+        '/ClaimID': str(claim_id),
+        '/AuthorityAddress': authority_address
+    }
+
+    # Copy pages from the original PDF
+    for page_num in range(len(pdf_reader.pages)):  # Use len(reader.pages)
+        pdf_writer.add_page(pdf_reader.pages[page_num])  # Use reader.pages[page_num] instead of getPage()
+
+    pdf_writer.add_metadata(metadata)
+
+    # Write the new PDF with metadata
+    output_stream = BytesIO()
+    pdf_writer.write(output_stream)
+
+    return output_stream.getvalue()
 
 
 from io import BytesIO

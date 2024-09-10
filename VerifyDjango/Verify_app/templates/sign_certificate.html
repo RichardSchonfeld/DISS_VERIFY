@@ -14,7 +14,7 @@
         <label for="claim">Select Claim:</label>
         <select id="claim" name="claim_id">
             {% for claim in unsigned_claims %}
-                <option value="{{ claim.id }}">{{ claim.requester.username }} ({{ claim.created_at }})</option>
+                <option value="{{ claim.claim_id }}">{{ claim.requester.username }} ({{ claim.created_at }})</option>
             {% endfor %}
         </select><br><br>
 
@@ -87,14 +87,14 @@
                             const signature = await web3.eth.personal.sign(certificateHash, account);
 
                             // Send the transaction to the contract
-                            const txnHash = await contract.methods.signClaim(selectedClaimId, certificateHash, signature).send({
+                            const txnHash = await contract.methods.signClaim(selectedClaimId, signature).send({
                                 from: account,
                                 gas: transactionData.gas,
                                 gasPrice: transactionData.gasPrice
                             });
 
                             // Submit the signed certificate and transaction hash to the backend
-                            await submitSignedCertificate(data.certificate_pdf_base64, signature, certificateHash, selectedClaimId, txnHash.transactionHash);
+                            await submitSignedCertificate(data.certificate_pdf_base64, signature, selectedClaimId, txnHash.transactionHash);
 
                         } else {
                             // Non-Web3 user flow (local signing)
@@ -107,11 +107,8 @@
                             // Sign the certificate hash with the decrypted private key
                             const signature = privateKeyObject.sign(certificateHash).signature;
 
-                            console.log("SEL" + selectedClaimId);
-                            var selectedClaimIds = 7;
-                            console.log(selectedClaimIds);
                             // Encode transaction data
-                            const txnData = contract.methods.signClaim(selectedClaimIds, certificateHash, signature).encodeABI();
+                            const txnData = contract.methods.signClaim(selectedClaimId, signature).encodeABI();
 
                             // Build and sign the transaction
                             const tx = {
@@ -126,7 +123,7 @@
                             const txnReceipt = await web3.eth.sendSignedTransaction(signedTransaction.rawTransaction);
 
                             // Submit the signed certificate and transaction hash to the backend
-                            await submitSignedCertificate(data.certificate_pdf_base64, signature, certificateHash, selectedClaimId, txnReceipt.transactionHash);
+                            await submitSignedCertificate(data.certificate_pdf_base64, signature, selectedClaimId, txnReceipt.transactionHash);
                         }
                     } catch (error) {
                         console.error('Signing failed:', error);
@@ -138,7 +135,7 @@
             }
         });
 
-        async function submitSignedCertificate(certificatePdfBase64, signature, certificateHash, selectedClaimId, txnHash) {
+        async function submitSignedCertificate(certificatePdfBase64, signature, selectedClaimId, txnHash) {
             try {
                 const response = await fetch('/store-signed-certificate/', {
                     method: 'POST',
@@ -147,7 +144,6 @@
                     },
                     body: JSON.stringify({
                         certificate_pdf_base64: certificatePdfBase64,
-                        certificate_hash: certificateHash,
                         signature: signature,
                         selected_claim_id: selectedClaimId,
                         txn_hash: txnHash

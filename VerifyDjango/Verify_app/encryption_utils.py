@@ -99,6 +99,16 @@ def encrypt_and_split(data):
 
     return encrypted_data, shares
 
+
+def encrypt_certificate(certificate_data, encryption_key):
+    """Encrypts the certificate data using AES."""
+    iv = os.urandom(16)  # 16-byte IV for AES
+    cipher = Cipher(algorithms.AES(encryption_key), modes.CFB(iv), backend=default_backend())
+    encryptor = cipher.encryptor()
+    encrypted_data = encryptor.update(certificate_data) + encryptor.finalize()
+    return iv + encrypted_data  # Return IV and encrypted data together
+
+
 # Function to decrypt data using Shamir's Secret Shares
 def decrypt_with_shares(encrypted_data, shares):
     key = Shamir.combine(shares)
