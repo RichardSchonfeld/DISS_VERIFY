@@ -29,12 +29,11 @@ from rest_framework.response import Response
 from .models import Claim, CustomUser, Certificate, KeyFragment
 from .forms import UserRegisterForm, store_key_fragment, get_user_by_address, get_authority_name_from_address, \
     save_claim_to_django_DB, store_and_distribute_key_fragments, embed_metadata
-from .ipfs_functions import get_ipfs_raw_data, parse_json_decrypted_ipfs_data, get_ipfs_decrypted_data, \
-    get_decrypted_data_from_ipfs, upload_ipfs_file, get_decrypted_data_from_ipfs_file
+from .ipfs_functions import parse_json_decrypted_ipfs_data, get_decrypted_data_from_ipfs, \
+    upload_ipfs_file, get_decrypted_data_from_ipfs_file, upload_to_ipfs
 from .eth_utils import create_claim, sign_claim, get_claim, fund_account, extract_claim_id_from_receipt
 from .encryption_utils import encrypt_private_key, derive_key, decrypt_private_key, encrypt_and_split, \
     decrypt_with_shares, encrypt_with_public_key
-from .web3_utils import upload_to_ipfs
 from io import BytesIO
 
 from reportlab.lib.pagesizes import A4
@@ -43,7 +42,11 @@ from reportlab.pdfgen import canvas
 
 
 def index(request):
-    return render(request, "home.html")
+    # Fetch institutions that have signed up (authorities)
+    institutions = CustomUser.objects.filter(is_authority=True)
+    return render(request, "home.html", {
+        'institutions': institutions,
+    })
 
 def login_view(request):
     if request.method == "POST":

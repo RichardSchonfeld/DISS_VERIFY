@@ -8,51 +8,33 @@ from .forms import get_user_by_address
 from .models import KeyFragment
 
 
-def get_ipfs_raw_data(ipfs_hash):
-    """Retrieve encrypted data from IPFS."""
-    ipfs_url = f"http://127.0.0.1:8080/ipfs/{ipfs_hash}"
-    try:
-        response = requests.get(ipfs_url, timeout=10)  # Set a timeout for the request
-        response.raise_for_status()  # Raise an HTTPError for bad responses (4xx and 5xx)
-        return response.text
-    except requests.exceptions.HTTPError as http_err:
-        print(f"HTTP error occurred: {http_err}")  # Handle specific HTTP errors
-    except requests.exceptions.ConnectionError as conn_err:
-        print(f"Connection error occurred: {conn_err}")  # Handle connection errors
-    except requests.exceptions.Timeout as timeout_err:
-        print(f"Timeout error occurred: {timeout_err}")  # Handle request timeouts
-    except requests.exceptions.RequestException as req_err:
-        print(f"An error occurred: {req_err}")  # Handle any other request-related errors
-    return None
+def upload_to_ipfs(encrypted_data):
+    #ipfs_url = "http://127.0.0.1:5001/api/v0/add"
+    #files = {'file': ('encrypted_data.txt', encrypted_data)}
 
-def get_ipfs_decrypted_data(ipfs_hash, share1, share2):
-    """Retrieve encrypted data from IPFS."""
-    ipfs_url = f"http://127.0.0.1:8080/ipfs/{ipfs_hash}"
-    try:
-        response = requests.get(ipfs_url, timeout=10)  # Set a timeout for the request
-        response.raise_for_status()  # Raise an HTTPError for bad responses (4xx and 5xx)
+    #ipfs_url = "https://api.filebase.io/v1/ipfs/pins"
+    #headers = {
+    #    'Authorization': 'Bearer RDAyNUI0NTNERTZENjhGREJERTk6TE1yamVKZEVhU2lzbncySnBQSEdjZGlVanpMVkpDanV2SjBwRmczbzp2ZXJpZnlpbw==',
+    #    'Accept': 'application/json'
+    #}
 
-        encrypted_data = response.text
+    ipfs_url = settings.IPFS_PIN_ENDPOINT
 
-        share1 = ast.literal_eval(share1)
-        share2 = ast.literal_eval(share2)
-        shares = [share1, share2]
+    headers = {
+        "Authorization": f"Bearer {settings.PINATA_JWT}"
+    }
 
-        # Decrypt the data using the provided shares
-        decrypted_data = decrypt_with_shares(encrypted_data, shares)
-        return decrypted_data
-    except requests.exceptions.HTTPError as http_err:
-        print(f"HTTP error occurred: {http_err}")  # Handle specific HTTP errors
-    except requests.exceptions.ConnectionError as conn_err:
-        print(f"Connection error occurred: {conn_err}")  # Handle connection errors
-    except requests.exceptions.Timeout as timeout_err:
-        print(f"Timeout error occurred: {timeout_err}")  # Handle request timeouts
-    except requests.exceptions.RequestException as req_err:
-        print(f"An error occurred: {req_err}")  # Handle any other request-related errors
-    return None
+    files = {'file': ('encrypted_data.txt', encrypted_data)}
+    response = requests.post(ipfs_url, headers=headers, files=files)
+
+    if response.status_code == 200:
+        return response.json()['IpfsHash']
+    else:
+        raise Exception("Failed to upload to IPFS")
+
 
 def upload_ipfs_file(file_bytes):
-    ipfs_url = "http://127.0.0.1:5001/api/v0/add"
+    ipfs_url = settings.IPFS_PIN_ENDPOINT
 
     # Create a file-like object from the bytes (the file must have a name for the IPFS API to accept it)
     files = {'file': ('encrypted_certificate.pdf', file_bytes)}
@@ -79,7 +61,7 @@ def get_decrypted_data_from_ipfs(ipfs_hash, user):
         str: The decrypted data if successful, or None if any part of the process fails.
     """
     # Retrieve the encrypted data from IPFS
-    ipfs_url = f"http://127.0.0.1:8080/ipfs/{ipfs_hash}"
+    ipfs_url = settings.IPFS_GET_ENDPOINT + ipfs_hash
     response = requests.get(ipfs_url)
 
     if response.status_code != 200:
@@ -119,7 +101,7 @@ def get_decrypted_data_from_ipfs_file(ipfs_hash, user):
     """
     try:
         # 1. Retrieve the encrypted data from IPFS
-        ipfs_url = f"http://127.0.0.1:8080/ipfs/{ipfs_hash}"
+        ipfs_url = settings.IPFS_GET_ENDPOINT + ipfs_hash
         response = requests.get(ipfs_url)
 
         if response.status_code != 200:

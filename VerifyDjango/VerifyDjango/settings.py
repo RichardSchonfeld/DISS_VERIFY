@@ -102,6 +102,10 @@ INFURA_API_SECRET = os.getenv('INFURA_API_KEY_SECRET')
 #if not INFURA_API_SECRET:
 #    raise ValueError("Infura API secret (INFURA_PROJECT_SECRET) is not set properly in environment settings.")
 
+IPFS_PIN_ENDPOINT = 'https://api.pinata.cloud/pinning/pinFileToIPFS'
+IPFS_GET_ENDPOINT = 'https://gateway.pinata.cloud/ipfs/'
+PINATA_JWT = os.getenv('PINATA_JWT')
+
 # Some profile config
 SERVER_OP_ACC_ADDRESS = os.getenv('SERVER_OP_ACC_ADDRESS')
 
