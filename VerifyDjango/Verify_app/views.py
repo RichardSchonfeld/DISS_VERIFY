@@ -14,7 +14,7 @@ import json
 import os
 import base64
 
-from django.contrib.auth import authenticate, login
+from django.contrib.auth import authenticate, login, logout
 from django.http import JsonResponse, HttpResponseRedirect, HttpResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.conf import settings
@@ -30,10 +30,10 @@ from .models import Claim, CustomUser, Certificate, KeyFragment
 from .forms import UserRegisterForm, store_key_fragment, get_user_by_address, get_authority_name_from_address, \
     save_claim_to_django_DB, store_and_distribute_key_fragments, embed_metadata
 from .ipfs_functions import parse_json_decrypted_ipfs_data, get_decrypted_data_from_ipfs, \
-    upload_ipfs_file, get_decrypted_data_from_ipfs_file, upload_to_ipfs
+    upload_ipfs_file, get_decrypted_data_from_ipfs_file, upload_to_ipfs, predetermine_ipfs_hash
 from .eth_utils import create_claim, sign_claim, get_claim, fund_account, extract_claim_id_from_receipt
 from .encryption_utils import encrypt_private_key, derive_key, decrypt_private_key, encrypt_and_split, \
-    decrypt_with_shares, encrypt_with_public_key
+    decrypt_with_shares, encrypt_with_public_key, encrypt_and_split_file
 from io import BytesIO
 
 from reportlab.lib.pagesizes import A4
@@ -61,6 +61,11 @@ def login_view(request):
     else:
         return render(request, 'login.html')
 
+
+def logout_view(request):
+    logout(request)
+    return redirect('login')
+
 def register(request):
     if request.method == 'POST':
         form = UserRegisterForm(request.POST)
@@ -81,6 +86,27 @@ def register(request):
     else:
         form = UserRegisterForm()
     return render(request, 'register.html', {'form': form})
+
+def register_authority(request):
+    if request.method == 'POST':
+        form = UserRegisterForm(request.POST)
+        if form.is_valid():
+            user = form.save(commit=False)
+            user.address = request.POST['address']
+            user.encrypted_private_key = request.POST['encrypted_private_key']
+            user.institution_name = request.POST['authority_name']  # New field for authority name
+            user.is_authority = True  # Mark this user as an authority
+            user.save()
+
+            # Optionally, fund the account (for Ethereum-based operations)
+            fund_account(user.address)
+
+            return redirect('index')
+        else:
+            return render(request, 'register_authority.html', {'form_errors': form.errors})
+    else:
+        form = UserRegisterForm()
+    return render(request, 'register_authority.html', {'form': form})
 
 
 def transaction_confirmation(request):
@@ -254,17 +280,15 @@ def sign_certificate_view(request):
         claim_id = request.POST.get('claim_id')
         try:
             claim = Claim.objects.get(claim_id=claim_id)
-            # Proceed with the rest of your logic
         except Claim.DoesNotExist:
             return JsonResponse({'error': f'No entry found for claim ID: {claim_id}'}, status=404)
 
-        # Fetch the claim data from IPFS (retrieved as a string)
+        # Fetch claim data from IPFS (retrieved as a string)
         claim_data_string = get_decrypted_data_from_ipfs(claim.ipfs_hash, request.user)
-
         if not claim_data_string:
             return JsonResponse({'error': 'Failed to retrieve data from IPFS'}, status=500)
 
-        # Prepare claim data (adjust this to match the actual data structure)
+        # Prepare claim data (adjust this to match actual structure)
         claim_data_parts = claim_data_string.split(',')
         claim_data = {
             "year_of_graduation": claim_data_parts[0],
@@ -279,12 +303,21 @@ def sign_certificate_view(request):
         certificate_data, certificate_pdf_buffer = prepare_certificate_data(claim_data)
 
         # Embed claim ID and authority address into the certificate PDF
-        embedded_certificate_pdf_bytes = embed_metadata(certificate_pdf_buffer.getvalue(), claim_id,
-                                                        request.user.address)
+        embedded_certificate_pdf_bytes = embed_metadata(certificate_pdf_buffer.getvalue(), claim_id, request.user.address)
+
+        # Encrypt the certificate and split the encryption key
+        encrypted_data, shares = encrypt_and_split_file(embedded_certificate_pdf_bytes)
+
+        # Upload the encrypted certificate to IPFS
+        ipfs_hash = upload_ipfs_file(encrypted_data)
 
         # Generate a certificate hash
         certificate_hash = generate_certificate_hash(embedded_certificate_pdf_bytes)
         message = encode_defunct(hexstr=certificate_hash)
+
+        # Store and distribute key fragments
+        store_and_distribute_key_fragments(shares, claim.requester, claim.authority.address, ipfs_hash)
+
 
         # Prepare the transaction data for blockchain signing
         web3 = Web3(Web3.HTTPProvider('http://localhost:8545'))
@@ -296,22 +329,25 @@ def sign_certificate_view(request):
 
         transaction = verify_contract_instance.functions.signClaim(
             int(claim_id),
-            "0x"  # Placeholder for the signature, to be replaced in the frontend
+            "0x",  # Placeholder for the signature, to be replaced in the frontend
+            ipfs_hash
         ).build_transaction({
             'chainId': 1337,
             'gas': 500000,
             'gasPrice': web3.to_wei('50', 'gwei'),
-            'nonce': web3.eth.get_transaction_count(request.user.address)
+            'nonce': web3.eth.get_transaction_count(request.user.address),
+            'value': 0
         })
 
-        # Return the certificate data, certificate hash, and transaction for signing in the frontend
+        # Return the certificate data, certificate hash, CID, and transaction for signing in the frontend
         return JsonResponse({
             "transaction": json.dumps(transaction),
             "certificate_hash": Web3.to_hex(message.body),
-            "certificate_pdf_base64":  base64.b64encode(embedded_certificate_pdf_bytes).decode('utf-8'),
+            "certificate_pdf_base64": base64.b64encode(embedded_certificate_pdf_bytes).decode('utf-8'),
             "selected_claim_id": claim_id,
             "contract_abi": contract_abi,
-            "contract_address": contract_address
+            "contract_address": contract_address,
+            "ipfs_cid": ipfs_hash  # Return the CID to the frontend
         })
 
     # Render list of unsigned claims
@@ -332,36 +368,23 @@ def store_signed_certificate(request):
     """Store the signed certificate, save a copy for user and authority, and embed claim ID and authority address."""
     if request.method == 'POST':
         data = json.loads(request.body)
-        certificate_pdf_base64 = data.get('certificate_pdf_base64')  # Get the base64-encoded PDF
         signature = data.get('signature')
-        user = request.user  # The user requesting the certificate (the student, for example)
-        claim_id = data.get('selected_claim_id')  # Get the claim ID passed from the frontend
+        ipfs_hash = data.get('expected_cid')  # CID passed from frontend
+        txn_hash = data.get('txn_hash')
+        claim_id = data.get('selected_claim_id')
 
-        # Decode the base64-encoded PDF back to bytes
-        certificate_pdf_bytes = base64.b64decode(certificate_pdf_base64)
-
-        # Save the signed certificate in the database for both user and authority
         claim = Claim.objects.get(claim_id=claim_id)
+        claimant = claim.requester
         authority = claim.authority
 
-        # Save certificate for user
+        # Save certificate for user along with IPFS hash
         user_certificate = Certificate.objects.create(
-            user=user,
+            user=claimant,
             authority=authority,
             claim=claim,
-            ipfs_hash=None,  # No need for IPFS here
+            ipfs_hash=ipfs_hash,
             signature=signature,
-            file=ContentFile(certificate_pdf_bytes, name=f"certificate_{claim_id}.pdf")
-        )
-
-        # Save certificate for authority
-        authority_certificate = Certificate.objects.create(
-            user=authority,
-            authority=authority,
-            claim=claim,
-            ipfs_hash=None,
-            signature=signature,
-            file=ContentFile(certificate_pdf_bytes, name=f"certificate_authority_{claim_id}.pdf")
+            txn_hash=txn_hash,
         )
 
         # Mark the claim as signed
@@ -370,8 +393,9 @@ def store_signed_certificate(request):
 
         return JsonResponse({
             'status': 'success',
-            'message': 'Certificate signed and saved successfully.',
-            'certificate_id': user_certificate.id
+            'message': 'Certificate signed, encrypted, and uploaded to IPFS successfully.',
+            'certificate_id': user_certificate.id,
+            'ipfs_hash': ipfs_hash
         })
 
     return JsonResponse({'status': 'error', 'message': 'Invalid request method.'}, status=405)
@@ -388,22 +412,17 @@ def view_certificate(request):
 
 def verify_signature(request):
     """
-    Verify the signature of the uploaded or selected certificate using the claim ID and authority address.
+    Verify the signature of the uploaded certificate using the claim ID and authority address.
+    Provide cryptographic proof by retrieving the transaction hash from the database.
     """
     if request.method == 'POST':
-        data = request.POST
-        certificate_id = data.get('certificate_id')
         uploaded_file = request.FILES.get('uploaded_certificate')
 
-        if certificate_id:
-            # User selects a certificate from the database
-            certificate = Certificate.objects.get(id=certificate_id)
-            pdf_file = certificate.file.read()
-        elif uploaded_file:
-            # User uploads a certificate
-            pdf_file = uploaded_file.read()
-        else:
+        if not uploaded_file:
             return JsonResponse({'error': 'No certificate provided'}, status=400)
+
+        # Read the uploaded PDF file
+        pdf_file = uploaded_file.read()
 
         # Extract claim ID and authority address from the certificate metadata
         pdf_reader = PdfReader(BytesIO(pdf_file))
@@ -414,12 +433,22 @@ def verify_signature(request):
             authority_address = metadata.get('/AuthorityAddress')
         except Exception as e:
             return JsonResponse({
-                'status': 'Error: Certificate not registered with Dapp',
+                'status': 'Error: Certificate metadata is invalid or incomplete',
                 'verified': False,
-
                 'verified_by': 'N/A'
             })
 
+        # Locate the corresponding certificate in the database
+        try:
+            cert_claim = Claim.objects.get(claim_id=claim_id)
+            authority = CustomUser.objects.get(address=authority_address)
+            certificate = Certificate.objects.get(claim=cert_claim, authority=authority)
+        except Certificate.DoesNotExist:
+            return JsonResponse({
+                'status': 'Error: No certificate found with the provided metadata',
+                'verified': False,
+                'verified_by': 'N/A'
+            })
 
         # Hash the file to compare it to the on-chain data
         file_hash = hashlib.sha256(pdf_file).hexdigest()
@@ -434,35 +463,42 @@ def verify_signature(request):
         contract_address = settings.CONTRACT_ADDRESS
         contract = web3.eth.contract(address=contract_address, abi=contract_abi)
 
-        # Get certificate hash and signature from the smart contract
+        # Get certificate signature from the smart contract
         signature = contract.functions.getCertSignature(claim_id).call()
 
+        # Verify the signature
         message = encode_defunct(hexstr=file_hash)
-
         recovered_address = web3.eth.account.recover_message(
             message,
             signature=signature
         )
 
-        # Compare hashes and verify the signature
-        if recovered_address.lower() == authority_address.lower():
-            authority = CustomUser.objects.get(address=authority_address)
+        # Retrieve transaction hash from the database
+        txn_hash = certificate.txn_hash
 
+        # Compare hashes and verify the signature
+        if recovered_address.lower() == certificate.authority.address.lower():
             return JsonResponse({
                 'status': 'success',
                 'verified': True,
-
-                'verified_by': authority.username
+                'verified_by': certificate.authority.institution_name,
+                'transaction_hash': txn_hash,  # Return transaction hash from the database
+                'etherscan_url': f"https://etherscan.io/tx/{txn_hash}"  # Provide a link to view on Etherscan
             })
         else:
             return JsonResponse({
                 'status': 'success',
                 'verified': False,
-                'verified_by': authority_address
+                'verified_by': certificate.authority.address,
+                'transaction_hash': txn_hash,
+                'etherscan_url': f"https://etherscan.io/tx/{txn_hash}"
             })
 
-    certificates = Certificate.objects.filter(user=request.user)
-    return render(request, 'verify_certificate.html', {'certificates': certificates})
+    return render(request, 'verify_certificate.html')
+
+
+
+
 
 
 def user_profile_view(request):
@@ -560,7 +596,13 @@ def claim_detail_view(request, claim_id):
         claim = verify_contract_instance.functions.getClaim(claim_id).call()
 
         ipfs_hash = claim[2]
-        decrypted_data = get_decrypted_data_from_ipfs(ipfs_hash, request.user)
+
+        # If the claim is signed, retrieve and decrypt the IPFS data
+        if claim[3] == True:  # Assuming claim[3] is the 'signed' status
+            decrypted_data = get_decrypted_data_from_ipfs_file(ipfs_hash, request.user)
+            decrypted_data = base64.b64encode(decrypted_data).decode('utf-8')
+        else:
+            decrypted_data = get_decrypted_data_from_ipfs(ipfs_hash, request.user)
 
         claim_detail = {
             'claim_id': claim_id,

@@ -100,6 +100,20 @@ def encrypt_and_split(data):
     return encrypted_data, shares
 
 
+def encrypt_and_split_file(file_bytes):
+    # Generate AES key
+    key = get_random_bytes(16)
+    cipher = AES.new(key, AES.MODE_CBC)
+    ct_bytes = cipher.encrypt(pad(file_bytes, AES.block_size))  # Encrypt the file bytes
+    iv = cipher.iv
+    encrypted_data = base64.b64encode(iv + ct_bytes).decode('utf-8')
+
+    # Generate Shamir's Secret Shares (2-of-3 scheme)
+    shares = Shamir.split(2, 3, key)
+
+    return encrypted_data, shares
+
+
 def encrypt_certificate(certificate_data, encryption_key):
     """Encrypts the certificate data using AES."""
     iv = os.urandom(16)  # 16-byte IV for AES
@@ -123,6 +137,31 @@ def decrypt_with_shares(encrypted_data, shares):
     return original_data
 
 # Function to upload data to IPFS
+
+def decrypt_with_shares_file(encrypted_data, shares):
+    # Reconstruct the AES key using Shamir's secret shares
+    key = Shamir.combine(shares)
+
+    # Decode the base64-encoded encrypted data
+    encrypted_data_bytes = base64.b64decode(encrypted_data)
+
+    # Extract the IV and ciphertext from the decrypted data
+    iv = encrypted_data_bytes[:16]
+    ct = encrypted_data_bytes[16:]
+
+    # Initialize the AES cipher with the key and IV
+    cipher = AES.new(key, AES.MODE_CBC, iv)
+
+    # Decrypt the ciphertext
+    decrypted_data = cipher.decrypt(ct)
+
+    # Unpad the decrypted data and return it as binary (since it's a PDF)
+    try:
+        original_data = unpad(decrypted_data, AES.block_size)
+    except ValueError as e:
+        raise ValueError(f"Unpadding error: {e}")
+
+    return original_data
 
 def write_shares_to_local_file(shares):
     # Get the path to the user's desktop

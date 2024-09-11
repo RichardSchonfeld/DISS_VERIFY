@@ -3,7 +3,7 @@ import ast
 
 from django.conf import settings
 
-from .encryption_utils import decrypt_with_shares
+from .encryption_utils import decrypt_with_shares, decrypt_with_shares_file
 from .forms import get_user_by_address
 from .models import KeyFragment
 
@@ -36,18 +36,63 @@ def upload_to_ipfs(encrypted_data):
 def upload_ipfs_file(file_bytes):
     ipfs_url = settings.IPFS_PIN_ENDPOINT
 
+    headers = {
+        "Authorization": f"Bearer {settings.PINATA_JWT}"
+    }
+
     # Create a file-like object from the bytes (the file must have a name for the IPFS API to accept it)
     files = {'file': ('encrypted_certificate.pdf', file_bytes)}
 
     # Send the file to IPFS
-    response = requests.post(ipfs_url, files=files)
+    response = requests.post(ipfs_url, headers=headers, files=files)
 
     if response.status_code == 200:
-        ipfs_hash = response.json()['Hash']
+        ipfs_hash = response.json()['IpfsHash']
         return ipfs_hash
     else:
         raise Exception(f"Failed to upload file to IPFS. Status code: {response.status_code}")
 
+
+import hashlib
+import multihash
+from base58 import b58encode
+
+import hashlib
+import multihash
+from base58 import b58encode
+
+import hashlib
+import multihash
+import base64
+import base58
+
+def predetermine_ipfs_hash(content: str) -> str:
+    # Convert the input string to bytes
+    data_bytes = content.encode('utf-8')
+
+    # Step 1: Hash the data using SHA-256
+    sha256_hash = hashlib.sha256(data_bytes).digest()
+
+    # Step 2: Wrap the hash in a multihash (CIDv0 uses SHA-256 multihash)
+    mh = multihash.encode(sha256_hash, 'sha2-256')
+
+    # Step 3: CIDv0 is Base58 encoded (no CID version prefix)
+    cid_v0 = base58.b58encode(mh).decode('utf-8')
+
+    return cid_v0
+def predetermine_ipfs_hash_dep(content: str) -> str:
+    # Convert the string to bytes (IPFS hashes byte data)
+    content_bytes = content.encode('utf-8')
+
+    # Step 1: Generate SHA-256 hash of the content
+    sha256_hash = hashlib.sha256(content_bytes).digest()
+
+    # Step 2: Wrap it in a multihash (to create the CID)
+    mh = multihash.encode(sha256_hash, 'sha2-256')
+
+    # Step 3: Convert it to base58 format (CID v0)
+    cid = b58encode(mh).decode('utf-8')
+    return cid
 
 def get_decrypted_data_from_ipfs(ipfs_hash, user):
     """
@@ -123,7 +168,7 @@ def get_decrypted_data_from_ipfs_file(ipfs_hash, user):
         shares = [ast.literal_eval(user_fragment.fragment), ast.literal_eval(server_fragment.fragment)]
 
         # 5. Decrypt the data using the provided shares
-        decrypted_data = decrypt_with_shares(encrypted_data, shares)
+        decrypted_data = decrypt_with_shares_file(encrypted_data, shares)
 
         return decrypted_data
 

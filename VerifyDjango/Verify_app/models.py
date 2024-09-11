@@ -84,7 +84,8 @@ class CustomUser(AbstractUser):
         if self.is_authority:
             if not self.institution_name:
                 raise ValueError("Institution name is required for Authority.")
-            self.username = self.institution_name
+            if not self.is_web3_user:
+                self.username = self.email
         super().save(*args, **kwargs)
 
 
@@ -115,15 +116,10 @@ class Certificate(models.Model):
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='certificates')
     authority = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='issued_certificates')
     claim = models.ForeignKey(Claim, on_delete=models.CASCADE)
-
     ipfs_hash = models.CharField(max_length=255, blank=True, null=True)  # Optional, if used with IPFS
-    certificate_hash = models.CharField(max_length=255, blank=True, null=True)  # Hash of the certificate
     signature = models.TextField(blank=True, null=True)  # The digital signature
-
-    file = models.FileField(upload_to='certificates/', blank=True, null=True)  # Store the actual certificate PDF
-
+    txn_hash = models.CharField(max_length=255)
     created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         verbose_name = 'Certificate'

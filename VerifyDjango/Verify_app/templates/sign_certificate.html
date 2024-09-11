@@ -1,46 +1,66 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sign Certificate</title>
+
     {% load static %}
+
+    <!-- Including CSS files from the index page setup -->
+    <link rel="stylesheet" href="{% static 'css/bootstrap.min.css' %}">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <link rel="stylesheet" href="{% static 'css/responsive.css' %}">
+    <link rel="stylesheet" href="{% static 'css/plugins.css' %}">
+
+    <!-- External JS libraries -->
     <script src="https://cdn.jsdelivr.net/gh/ethereum/web3.js@1.3.0/dist/web3.min.js"></script>
     <script src="{% static 'js/encryption.js' %}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@3.3.7/dist/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+
 </head>
 <body>
-    <h1>Sign Your Certificate</h1>
-    <form id="decrypt-form" method="POST" action="{% url 'sign_certificate' %}">
-        {% csrf_token %}
+    <div class="container">
+        <h1>Sign Your Certificate</h1>
 
-        <label for="claim">Select Claim:</label>
-        <select id="claim" name="claim_id">
-            {% for claim in unsigned_claims %}
-                <option value="{{ claim.claim_id }}">{{ claim.requester.username }} ({{ claim.created_at }})</option>
-            {% endfor %}
-        </select><br><br>
+        <!-- Form to select claim and sign certificate -->
+        <form id="decrypt-form" method="POST" action="{% url 'sign_certificate' %}">
+            {% csrf_token %}
+            <div class="form-group">
+                <label for="claim">Select Claim:</label>
+                <select id="claim" name="claim_id" class="form-control">
+                    {% for claim in unsigned_claims %}
+                        <option value="{{ claim.claim_id }}">{{ claim.requester.username }} ({{ claim.created_at }})</option>
+                    {% endfor %}
+                </select>
+            </div>
 
-        <button type="submit">Prepare Certificate</button>
-    </form>
+            <button type="submit" class="btn btn-primary">Prepare Certificate</button>
+        </form>
 
-    <div id="certificate-container" style="display:none;">
-        <h2>Certificate Data</h2>
-        <pre id="certificate-data"></pre>
+        <!-- Certificate container, hidden by default -->
+        <div id="certificate-container" style="display:none;">
+            <h2>Certificate Data</h2>
+            <pre id="certificate-data"></pre>
 
-        <!-- PDF preview section -->
-        <h2>Certificate PDF Preview</h2>
-        <embed id="pdf-preview" type="application/pdf" width="600" height="800" style="display:none;" />
+            <!-- PDF preview section -->
+            <h2>Certificate PDF Preview</h2>
+            <embed id="pdf-preview" type="application/pdf" width="600" height="800" style="display:none;" />
 
-        <!-- Download link for the PDF -->
-        <a id="pdf-download-link" href="#" download="certificate.pdf" style="display:none;">Download Certificate PDF</a>
+            <!-- Download link for the PDF -->
+            <a id="pdf-download-link" href="#" download="certificate.pdf" style="display:none;" class="btn btn-success">Download Certificate PDF</a>
 
-        <br><br>
-        <button id="sign-button" style="display:none;">Sign Certificate</button>
+            <br><br>
+            <button id="sign-button" class="btn btn-success" style="display:none;">Sign Certificate</button>
+        </div>
+
+        <!-- Hidden password input, shown only if user is not Web3 and Prepare Certificate is clicked -->
+        <div id="password-container" class="form-group" style="display:none;">
+            <label for="password">Enter your password to decrypt your private key:</label>
+            <input type="password" id="password" name="password" class="form-control">
+            <input type="hidden" id="encrypted_private_key" value="{{encrypted_private_key}}">
+        </div>
     </div>
-
-    {% if encrypted_private_key %}
-        <label for="password">Enter your password to decrypt your private key:</label>
-        <input type="password" id="password" name="password" required>
-        <input type="hidden" id="encrypted_private_key" value="{{encrypted_private_key}}">
-    {% endif %}
 
     <script>
         document.getElementById('decrypt-form').addEventListener('submit', async function(event) {
@@ -63,12 +83,19 @@
                 // Show the PDF preview or download link
                 displayPdfPreview(data.certificate_pdf_base64);
 
+                // Determine if the user is a Web3 user and show the password field if they are not
+                const isWeb3User = {{ user.is_web3_user|lower }};
+                if (!isWeb3User) {
+                    document.getElementById('password-container').style.display = 'block';
+                }
+
                 // Store the transaction and certificate hash for signing
                 const transactionData = JSON.parse(data.transaction);
                 const certificateHash = data.certificate_hash;
                 const selectedClaimId = data.selected_claim_id;
                 const contractAbi = data.contract_abi;  // Contract ABI from backend
                 const contractAddress = data.contract_address;  // Contract address from backend
+                const expectedIPFSCid = data.ipfs_cid;
 
                 // Initialize Web3
                 const web3 = new Web3(window.ethereum || new Web3.providers.HttpProvider('http://localhost:8545'));
@@ -76,7 +103,6 @@
 
                 // Prepare the signing process when the user clicks the "Sign Certificate" button
                 document.getElementById('sign-button').addEventListener('click', async () => {
-                    const isWeb3User = {{ user.is_web3_user|lower }};
                     try {
                         if (isWeb3User) {
                             // MetaMask user flow
@@ -87,14 +113,14 @@
                             const signature = await web3.eth.personal.sign(certificateHash, account);
 
                             // Send the transaction to the contract
-                            const txnHash = await contract.methods.signClaim(selectedClaimId, signature).send({
+                            const txnHash = await contract.methods.signClaim(selectedClaimId, signature, expectedIPFSCid).send({
                                 from: account,
                                 gas: transactionData.gas,
                                 gasPrice: transactionData.gasPrice
                             });
 
                             // Submit the signed certificate and transaction hash to the backend
-                            await submitSignedCertificate(data.certificate_pdf_base64, signature, selectedClaimId, txnHash.transactionHash);
+                            await submitSignedCertificate(data.certificate_pdf_base64, signature, selectedClaimId, txnHash.transactionHash, expectedIPFSCid);
 
                         } else {
                             // Non-Web3 user flow (local signing)
@@ -108,7 +134,7 @@
                             const signature = privateKeyObject.sign(certificateHash).signature;
 
                             // Encode transaction data
-                            const txnData = contract.methods.signClaim(selectedClaimId, signature).encodeABI();
+                            const txnData = contract.methods.signClaim(selectedClaimId, signature, expectedIPFSCid).encodeABI();
 
                             // Build and sign the transaction
                             const tx = {
@@ -123,7 +149,7 @@
                             const txnReceipt = await web3.eth.sendSignedTransaction(signedTransaction.rawTransaction);
 
                             // Submit the signed certificate and transaction hash to the backend
-                            await submitSignedCertificate(data.certificate_pdf_base64, signature, selectedClaimId, txnReceipt.transactionHash);
+                            await submitSignedCertificate(data.certificate_pdf_base64, signature, selectedClaimId, txnReceipt.transactionHash, expectedIPFSCid);
                         }
                     } catch (error) {
                         console.error('Signing failed:', error);
@@ -135,7 +161,7 @@
             }
         });
 
-        async function submitSignedCertificate(certificatePdfBase64, signature, selectedClaimId, txnHash) {
+        async function submitSignedCertificate(certificatePdfBase64, signature, selectedClaimId, txnHash, expectedIPFSCid) {
             try {
                 const response = await fetch('/store-signed-certificate/', {
                     method: 'POST',
@@ -146,7 +172,8 @@
                         certificate_pdf_base64: certificatePdfBase64,
                         signature: signature,
                         selected_claim_id: selectedClaimId,
-                        txn_hash: txnHash
+                        txn_hash: txnHash,
+                        expected_cid: expectedIPFSCid,
                     })
                 });
 

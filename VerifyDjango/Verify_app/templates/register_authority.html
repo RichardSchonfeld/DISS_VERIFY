@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Register</title>
+    <title>Register as Authority</title>
 
     {% load static %}
 
@@ -20,7 +20,7 @@
 <body>
 
     <div class="container">
-        <h1 class="text-center">Register</h1>
+        <h1 class="text-center">Register as Authority</h1>
 
         <!-- Registration form -->
         <form id="registerForm" method="post" class="form-horizontal" onsubmit="event.preventDefault(); registerUser();">
@@ -47,15 +47,22 @@
                 </div>
             </div>
 
+            <!-- Authority Name is mandatory for this form -->
+            <div class="form-group">
+                <label for="authorityName" class="col-sm-2 control-label">Authority Name:</label>
+                <div class="col-sm-10">
+                    <input type="text" id="authorityName" name="authority_name" class="form-control" required>
+                </div>
+            </div>
+
             <input type="hidden" id="address" name="address">
             <input type="hidden" id="encrypted_private_key" name="encrypted_private_key">
+            <input type="hidden" id="userType" name="user_type" value="authority">
 
             <div class="form-group text-center">
                 <button type="submit" class="btn btn-primary">Register</button>
+                <button type="button" class="btn btn-secondary" id="registerMetamask">Register with MetaMask</button>
             </div>
-
-            <a href="{% url 'register-authority' %}" class="btn btn-primary">Register as Authority</a>
-
         </form>
 
         <div id="error-message" class="text-danger text-center"></div>
@@ -67,6 +74,12 @@
         async function registerUser() {
             const form = document.getElementById('registerForm');
             const formData = new FormData(form);
+
+            const authorityName = document.getElementById('authorityName').value;
+            if (!authorityName) {
+                alert('Please fill in Authority Name');
+                return;
+            }
 
             // Generate Ethereum account
             const web3 = new Web3();
@@ -95,6 +108,51 @@
                 document.getElementById('error-message').textContent = 'Registration failed: ' + errorMessage;
             }
         }
+
+        // Metamask registration handler
+        document.getElementById('registerMetamask').addEventListener('click', async function () {
+            if (typeof window.ethereum !== 'undefined') {
+                const web3 = new Web3(window.ethereum);
+
+                // Request account access if needed
+                await ethereum.request({ method: 'eth_requestAccounts' });
+
+                const accounts = await web3.eth.getAccounts();
+                const account = accounts[0];
+
+                // Request a nonce from the backend
+                const nonceResponse = await fetch(`/web3/nonce/?address=${account}`);
+                const { nonce } = await nonceResponse.json();
+
+                // Sign the nonce with MetaMask
+                const signature = await web3.eth.personal.sign(`Sign this nonce: ${nonce}`, account, '');
+
+                // Get CSRF token from Django
+                const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+                // Send the signature to the backend for verification and user creation
+                const verifyResponse = await fetch('/web3/verify_authority/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrftoken,
+                    },
+                    body: JSON.stringify({
+                        account: account,
+                        signature: signature,
+                        authority_name: document.getElementById('authorityName').value
+                    }),
+                });
+
+                if (verifyResponse.ok) {
+                    window.location.href = "/";
+                } else {
+                    document.getElementById('error-message').textContent = 'MetaMask registration failed. Please try again.';
+                }
+            } else {
+                alert('MetaMask is not detected. Please install it to use this feature.');
+            }
+        });
     </script>
 
 </body>

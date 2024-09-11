@@ -4,50 +4,21 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Verify Certificate</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 0;
-        }
-        .container {
-            width: 100%;
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-        .header {
-            background-color: #f0f0f0;
-            padding: 10px;
-            text-align: center;
-            position: relative;
-        }
-        .header img {
-            position: absolute;
-            right: 20px;
-            top: 10px;
-        }
-        .button-container {
-            margin-bottom: 20px;
-        }
-        .button-container button {
-            margin: 5px;
-            padding: 10px 20px;
-        }
-        .certificate-preview {
-            width: 400px;
-            height: 400px;
-            border: 1px solid #ccc;
-            text-align: center;
-            line-height: 400px;
-        }
-        .verification-result {
-            margin-top: 20px;
-        }
-    </style>
+
+    {% load static %}
+
+    <!-- Including CSS files -->
+    <link rel="stylesheet" href="{% static 'css/bootstrap.min.css' %}">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <link rel="stylesheet" href="{% static 'css/responsive.css' %}">
+    <link rel="stylesheet" href="{% static 'css/plugins.css' %}">
+    <link rel="stylesheet" href="{% static 'css/roboto-webfont.css' %}">
+
+    <script src="{% static 'js/vendor/modernizr-2.8.3-respond-1.4.2.min.js' %}"></script>
 </head>
 <body>
-    <header id="header" class="navbar navbar-default navbar-fixed-top">
+    <!-- Navigation Bar -->
+    <nav class="navbar navbar-default">
         <div class="container">
             <div class="navbar-header">
                 <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar-collapse" aria-expanded="false">
@@ -56,84 +27,66 @@
                     <span class="icon-bar"></span>
                     <span class="icon-bar"></span>
                 </button>
-                <a class="navbar-brand" href="{% url 'home' %}">Home</a>
+                <a class="navbar-brand" href="#">Certificate Verification</a>
             </div>
 
             <div class="collapse navbar-collapse" id="navbar-collapse">
                 <ul class="nav navbar-nav navbar-right">
                     <li><a href="{% url 'home' %}">Home</a></li>
                     <li><a href="{% url 'user-profile' %}">Profile</a></li>
-                    <li><a href="#">Contact</a></li>
+                    <li><a href="{% url 'logout' %}">Logout</a></li>
                 </ul>
             </div>
         </div>
-    </header>
+    </nav>
 
+    <!-- Main Content Section -->
     <div class="container">
-        <form id="verifyForm" method="POST" enctype="multipart/form-data">
-            {% csrf_token %}
-            <div class="button-container">
-                <label for="certificateSelect">Select Certificate:</label>
-                <select id="certificateSelect" name="certificate_id">
-                    <option value="">Select from database</option>
-                    {% for certificate in certificates %}
-                    {% if certificate.file %}
-                    <option value="{{ certificate.id }}" data-url="{{ certificate.file.url }}">
-                        {{ certificate.claim.id }} - {{ certificate.authority.username }}
-                    </option>
-                    {% else %}
-                    <option value="{{ certificate.id }}" disabled>
-                        {{ certificate.claim.id }} - {{ certificate.authority.username }} (No File)
-                    </option>
-                    {% endif %}
-                    {% endfor %}
-                </select>
-                <br>
-                <label for="certificateUpload">Upload Certificate:</label>
-                <input type="file" id="certificateUpload" name="uploaded_certificate">
-            </div>
+        <div class="row">
+            <div class="col-md-8 col-md-offset-2">
+                <h2 class="text-center">Upload and Verify Certificate</h2>
+                <form id="verifyForm" method="POST" enctype="multipart/form-data">
+                    {% csrf_token %}
 
-            <div class="certificate-preview" id="certificatePreview">
-                <p>Certificate preview after upload</p>
-            </div>
+                    <!-- Certificate Upload Section -->
+                    <div class="form-group">
+                        <label for="certificateUpload">Upload Certificate:</label>
+                        <input type="file" id="certificateUpload" name="uploaded_certificate" class="form-control" required>
+                    </div>
 
-            <div class="verification-result">
-                <p>Verified? <span id="verifiedResult"></span></p>
-                <p>Verified by <span id="verifiedBy"></span></p>
-            </div>
+                    <!-- Certificate Preview Section -->
+                    <div class="certificate-preview" id="certificatePreview" style="display:none; margin-top: 20px;">
+                        <h4>Certificate Preview:</h4>
+                        <iframe id="pdfPreviewFrame" style="width:100%; height:600px; border:1px solid #ccc;"></iframe>
+                    </div>
 
-            <button type="submit">Verify Certificate</button>
-        </form>
+                    <!-- Verification Result -->
+                    <div class="verification-result" style="margin-top: 20px;">
+                        <p><strong>Verified?</strong> <span id="verifiedResult"></span></p>
+                        <p><strong>Verified by:</strong> <span id="verifiedBy"></span></p>
+                    </div>
+
+                    <!-- Cryptographic Proof -->
+                    <div class="crypto-proof" id="cryptoProof" style="display:none;">
+                        <p><strong>Transaction Hash:</strong> <span id="transactionHash"></span></p>
+                        <p><button class="btn btn-warning" id="etherscanLink" target="_blank">View on Etherscan</button></p>
+                    </div>
+
+                    <!-- Submit Button -->
+                    <button type="submit" class="btn btn-success">Verify Certificate</button>
+                </form>
+            </div>
+        </div>
     </div>
 
+    <!-- Include JavaScript files -->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@3.3.7/dist/js/bootstrap.min.js"></script>
+
     <script>
-        // Preview PDF when uploaded
-        const certificateUpload = document.getElementById('certificateUpload');
-        const certificatePreview = document.getElementById('certificatePreview');
-
-        certificateUpload.addEventListener('change', function(event) {
-            const file = event.target.files[0];
-            if (file) {
-                const fileURL = URL.createObjectURL(file);
-                certificatePreview.innerHTML = `<iframe src="${fileURL}" width="400" height="400"></iframe>`;
-            }
-        });
-
-        // Preview PDF when selected from dropdown
-        const certificateSelect = document.getElementById('certificateSelect');
-        certificateSelect.addEventListener('change', function() {
-            const selectedOption = certificateSelect.options[certificateSelect.selectedIndex];
-            const fileUrl = selectedOption.getAttribute('data-url');
-            if (fileUrl) {
-                certificatePreview.innerHTML = `<iframe src="${fileUrl}" width="400" height="400"></iframe>`;
-            } else {
-                certificatePreview.innerHTML = `<p>No file available for this certificate.</p>`;
-            }
-        });
-
+        // Handle form submission for verification
         document.getElementById('verifyForm').onsubmit = async function(event) {
             event.preventDefault();
-
             const formData = new FormData(document.getElementById('verifyForm'));
             const response = await fetch("{% url 'verify_signature' %}", {
                 method: 'POST',
@@ -143,7 +96,21 @@
 
             document.getElementById('verifiedResult').textContent = result.verified ? 'Yes' : 'No';
             document.getElementById('verifiedBy').textContent = result.verified_by || 'Unknown';
+            document.getElementById('transactionHash').textContent = result.transaction_hash;
+            document.getElementById('etherscanLink').href = result.etherscan_url;
+
+            document.getElementById('cryptoProof').style.display = 'block';
         };
+
+        // Automatically preview PDF upon file upload
+        document.getElementById('certificateUpload').addEventListener('change', function() {
+            const file = this.files[0];
+            if (file) {
+                const fileURL = URL.createObjectURL(file);
+                document.getElementById('pdfPreviewFrame').src = fileURL;
+                document.getElementById('certificatePreview').style.display = 'block';
+            }
+        });
     </script>
 </body>
 </html>

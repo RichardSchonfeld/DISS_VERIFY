@@ -14,7 +14,7 @@ contract Verify {
     uint256 public claimCount;
 
     event ClaimCreated(uint256 indexed claimId, address indexed initiator, address indexed authority, string ipfsHash);
-    event ClaimSigned(uint256 indexed claimId, address indexed authority, string signature);
+    event ClaimSigned(uint256 indexed claimId, address indexed authority, string signature, string ipfsHash);
 
     function createClaim(
         address _requester,
@@ -23,6 +23,7 @@ contract Verify {
     ) public {
         claimCount += 1;
 
+        // Log the claim data being created
         claims[claimCount] = ClaimData({
             requester: _requester,
             authority: _authority,
@@ -31,26 +32,30 @@ contract Verify {
             signed: false
         });
 
+        // Push claim ID to claimsByAddress and emit them
         claimsByAddress[_requester].push(claimCount);
         claimsByAddress[_authority].push(claimCount);
 
+        // Emit the final ClaimCreated event
         emit ClaimCreated(claimCount, _requester, _authority, _ipfsHash);
     }
 
     function signClaim(
         uint256 _claimId,
-        string memory _signature
+        string memory _signature,
+        string memory _ipfsHash  // Add ipfsHash parameter
     ) public {
         ClaimData storage claim = claims[_claimId];
         require(msg.sender == claim.authority, "Only the designated authority can sign this claim");
         require(!claim.signed, "Claim is already signed");
 
-        // Update the claim data with the signature
+        // Update the claim data with the signature and new IPFS hash
         claim.signed = true;
         claim.signature = _signature;
+        claim.ipfsHash = _ipfsHash;  // Overwrite the existing IPFS hash
 
         // Emit event for the signed claim
-        emit ClaimSigned(_claimId, msg.sender, _signature);
+        emit ClaimSigned(_claimId, msg.sender, _signature, _ipfsHash);
     }
 
     function getCertSignature(uint256 _claimId) public view returns (string memory) {
