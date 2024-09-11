@@ -19,7 +19,6 @@
             <div class="row">
                 <div class="col-sm-12">
                     <div class="logo-menu">
-                        <a href="{% url 'index' %}" class="logo"><img src="{% static 'images/logo.png' %}" alt="Logo"></a>
                         <nav class="navbar-right">
                             <ul id="nav" class="nav navbar-nav">
                                 <li><a href="{% url 'index' %}">Home</a></li>
@@ -44,9 +43,6 @@
                         <p><strong>Claim ID:</strong> {{ claim.claim_id }}</p>
                         <p><strong>Requester:</strong> {{ claim.requester }}</p>
                         <p><strong>Authority:</strong> {{ claim.authority }}</p>
-                        <p><strong>Year of Graduation:</strong> {{ claim.year_of_graduation }}</p>
-                        <p><strong>Student Number:</strong> {{ claim.student_number }}</p>
-                        <p><strong>Full Name:</strong> {{ claim.full_name }}</p>
                         <p><strong>IPFS Hash:</strong> {{ claim.ipfs_hash }}</p>
                         <p><strong>Decrypted data:</strong> {{ claim.decrypted_data }}</p>
                         <p><strong>Signed:</strong> {{ claim.signed }}</p>

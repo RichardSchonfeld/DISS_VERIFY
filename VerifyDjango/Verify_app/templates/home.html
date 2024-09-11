@@ -18,28 +18,6 @@
         <script src="{% static 'js/vendor/modernizr-2.8.3-respond-1.4.2.min.js' %}"></script>
     </head>
     <body>
-        <!-- Social and Contact Section -->
-        <section id="social" class="social">
-            <div class="container">
-                <div class="row">
-                    <div class="social-wrapper">
-                        <div class="col-md-6">
-                            <div class="social-icon">
-                                <a href="#"><i class="fa fa-facebook"></i></a>
-                                <a href="#"><i class="fa fa-twitter"></i></a>
-                                <a href="#"><i class="fa fa-linkedin"></i></a>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="social-contact">
-                                <a href="#"><i class="fa fa-phone"></i>+011 54925849</a>
-                                <a href="mailto:contact@yourdapp.com"><i class="fa fa-envelope"></i>contact@yourdapp.com</a>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
 
         <!-- Navigation with Login and Register buttons -->
         <nav class="navbar navbar-default">
@@ -51,7 +29,9 @@
                         <span class="icon-bar"></span>
                         <span class="icon-bar"></span>
                     </button>
-                    <a class="navbar-brand" href="#"><img src="{% static 'images/logo.png' %}" alt="Logo" /></a>
+                    <!--<a class="navbar-brand" href="#">
+                        <img src="{% static 'images/logo.png' %}" alt="" width="50" height="24">
+                    </a> -->
                 </div>
 
                 <div class="collapse navbar-collapse" id="navbar-collapse">
@@ -61,8 +41,8 @@
                         <li><a href="#service">Services</a></li>
                         <li><a href="#price">Pricing</a></li>
                         <li><a href="#business">Our Solution</a></li>
-                        <li><a href="#contact">Contact</a></li>
-                        <li><a href="{% url 'login' %}">Sign In</a></li>
+                        <li><a class="btn btn-danger" href="{% url 'user-profile' %}">My profile</a></li>
+                        <li><a class="btn btn-success" href="{% url 'login' %}">Sign In</a></li>
                         <li><a class="btn btn-warning text-white" href="{% url 'register' %}">Register</a></li>
                     </ul>
                 </div>
@@ -90,7 +70,7 @@
                                                             <option value="{{ institution.id }}">{{ institution.institution_name }}</option>
                                                         {% endfor %}
                                                     </select>
-                                                    <input type="button" class="btn btn-primary" id="goButton" value="Go">
+                                                    <input type="button" class="btn btn-primary" id="goButton" value="Create a claim">
                                                 </div>
                                             </div>
                                         </div>
@@ -194,7 +174,7 @@
 
         <!-- Include JavaScript files -->
         <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
-        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@3.3.7/dist/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
 
         <script>
             document.getElementById('goButton').addEventListener('click', function() {

@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Login</title>
     {% load static %}
+
     <!-- Include CSS Files from the Django Static Folder -->
     <link rel="stylesheet" href="{% static 'css/bootstrap.min.css' %}">
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
@@ -15,31 +16,34 @@
 
 <body>
     <!-- Header Section -->
-    <header id="header" class="navbar-fixed-top">
+    <header id="header" class="navbar navbar-default navbar-fixed-top">
         <div class="container">
-            <div class="row">
-                <div class="col-sm-12">
-                    <div class="logo-menu">
-                        <a href="{% url 'home' %}" class="logo"><img src="{% static 'images/logo.png' %}" alt="Logo"></a>
-                        <nav class="navbar-right">
-                            <ul id="nav" class="nav navbar-nav">
-                                <li><a href="{% url 'home' %}">Home</a></li>
-                                <li><a href="{% url 'user-profile' %}">Profile</a></li>
-                                <li><a href="#">Contact</a></li>
-                            </ul>
-                        </nav>
-                    </div>
-                </div>
+            <div class="navbar-header">
+                <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar-collapse" aria-expanded="false">
+                    <span class="sr-only">Toggle navigation</span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                </button>
+                <a class="navbar-brand" href="{% url 'home' %}">Home</a>
+            </div>
+
+            <div class="collapse navbar-collapse" id="navbar-collapse">
+                <ul class="nav navbar-nav navbar-right">
+                    <li><a href="{% url 'home' %}">Home</a></li>
+                    <li><a href="{% url 'user-profile' %}">Profile</a></li>
+                    <li><a href="#">Contact</a></li>
+                </ul>
             </div>
         </div>
     </header>
 
     <!-- Main Login Section -->
-    <section id="login" class="section-padding">
+    <section id="login" class="section-padding" style="padding-top: 80px;">
         <div class="container">
             <div class="row">
                 <!-- Standard Django Login -->
-                <div class="col-md-6 col-md-offset-1">
+                <div class="col-md-6">
                     <div class="login-form">
                         <h3>Login</h3>
                         <form method="post" action="{% url 'login' %}">
@@ -63,7 +67,7 @@
                 </div>
 
                 <!-- MetaMask Web3 Login -->
-                <div class="col-md-5">
+                <div class="col-md-6">
                     <div class="web3-login">
                         <h3>Login with Web3 (MetaMask)</h3>
                         <p>Access your account using MetaMask and your Ethereum address.</p>
@@ -107,7 +111,7 @@
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRFToken': csrftoken,  // Include CSRF token in the headers
+                    'X-CSRFToken': csrftoken,
                 },
                 body: JSON.stringify({ account, signature }),
             });

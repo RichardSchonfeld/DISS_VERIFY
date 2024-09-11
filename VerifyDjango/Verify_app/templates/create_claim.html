@@ -19,7 +19,7 @@
             <div class="row">
                 <div class="col-sm-12">
                     <div class="logo-menu">
-                        <a href="{% url 'home' %}" class="logo"><img src="{% static 'images/logo.png' %}" alt="Logo"></a>
+                        <!--<a href="{% url 'home' %}" class="logo"><img src="{% static 'images/logo.png' %}" alt="Logo"></a> -->
                         <nav class="navbar-right">
                             <ul id="nav" class="nav navbar-nav">
                                 <li><a href="{% url 'home' %}">Home</a></li>
@@ -59,11 +59,6 @@
                             </div>
 
                             <div class="form-group">
-                                <label for="password">Password:</label>
-                                <input type="password" class="form-control" id="password" name="password" placeholder="Enter password" required>
-                            </div>
-
-                            <div class="form-group">
                                 <label for="authority">Select Authority:</label>
                                 <select class="form-control" id="authority" name="authority" required>
                                     {% for authority in authorities %}
@@ -87,9 +82,7 @@
 
     <!-- Footer Section -->
     <footer id="footer" class="footer">
-        <div class="container text-center">
-            <p>&copy; 2024 SoftTech. All Rights Reserved.</p>
-        </div>
+
     </footer>
 
     <!-- Include JS Files from the Django Static Folder -->

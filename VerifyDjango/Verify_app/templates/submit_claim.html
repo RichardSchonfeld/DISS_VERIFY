@@ -2,120 +2,150 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Submit Claim</title>
     {% load static %}
+
+    <!-- Include CSS -->
+    <link rel="stylesheet" href="{% static 'css/bootstrap.min.css' %}">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+
+    <!-- Include Encryption Script -->
     <script src="{% static 'js/encryption.js' %}"></script>
     <script src="https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js"></script>
 </head>
 <body>
-    <h1>Submit Your Claim</h1>
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-light bg-light">
+        <a class="navbar-brand" href="/">Claims DApp</a>
+        <div class="collapse navbar-collapse" id="navbar-collapse">
+            <ul class="nav navbar-nav navbar-right">
+                <li class="nav-item">
+                    <a class="nav-link" href="/">Home</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/profile/">Profile</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/logout/">Logout</a>
+                </li>
+            </ul>
+        </div>
+    </nav>
 
-    <form id="claimForm" onsubmit="signAndSubmitClaim(); return false;">
-        {% csrf_token %}
+    <div class="container mt-5">
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-header text-center">
+                        <h2>Submit Your Claim</h2>
+                    </div>
+                    <div class="card-body">
+                        <form id="claimForm" onsubmit="signAndSubmitClaim(); return false;">
+                            {% csrf_token %}
 
-        <!-- Hidden field to hold the transaction data -->
-        <input type="hidden" id="transaction_data" value='{{ transaction_data|escapejs }}'>
-        <input type="hidden" id="claim_data" value='{{ claim_data|safe }}'>
+                            <!-- Hidden field to hold the transaction data -->
+                            <input type="hidden" id="transaction_data" value='{{ transaction_data|escapejs }}'>
+                            <input type="hidden" id="claim_data" value='{{ claim_data|safe }}'>
 
-        <!-- Django user specific fields -->
-        {% if encrypted_private_key %}
-            <label for="password">Enter your password to decrypt your private key:</label>
-            <input type="password" id="password" name="password" required>
-            <input type="hidden" id="encrypted_private_key" value="{{ encrypted_private_key }}">
-        {% endif %}
+                            <!-- User-specific decryption input -->
+                            {% if encrypted_private_key %}
+                            <div class="form-group">
+                                <label for="password">Enter your password to decrypt your private key:</label>
+                                <input type="password" id="password" name="password" class="form-control" placeholder="Password" required>
+                                <input type="hidden" id="encrypted_private_key" value="{{ encrypted_private_key }}">
+                            </div>
+                            {% endif %}
 
-        <button type="submit">Sign and Submit Claim</button>
-    </form>
+                            <div class="text-center">
+                                <button type="submit" class="btn btn-primary btn-lg">Sign and Submit Claim</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
-<script>
-    async function signAndSubmitClaim() {
-        try {
-            const isWeb3User = {{ user.is_web3_user|lower }}; // This is True for MetaMask users and False for Django users
-            // Prepare the transaction data
-            let transactionData = document.getElementById('transaction_data').value;
-            const claimData = JSON.parse(document.getElementById('claim_data').value);
-            // Fix JSON parsing issue by ensuring proper formatting
-            transactionData = JSON.parse(transactionData.replace(/\\u0022/g, '"'));
+    <!-- Footer -->
+    <footer class="text-center mt-5">
+    </footer>
 
-            if (isWeb3User) {
-                // MetaMask User Flow
-                const web3 = new Web3(window.ethereum);
-                await ethereum.request({ method: 'eth_requestAccounts' });
+    <!-- JavaScript and Web3 Scripts -->
+    <script>
+        async function signAndSubmitClaim() {
+            try {
+                const isWeb3User = {{ user.is_web3_user|lower }};
+                let transactionData = document.getElementById('transaction_data').value;
+                const claimData = JSON.parse(document.getElementById('claim_data').value);
 
-                const accounts = await web3.eth.getAccounts();
-                const account = accounts[0];
+                transactionData = JSON.parse(transactionData.replace(/\\u0022/g, '"'));
 
-                // Send the transaction directly with MetaMask (no private key involved here)
-                const txnParams = {
-                    from: account,
-                    to: transactionData.to, // Ensure to include the correct 'to' address in the transaction data
-                    gas: transactionData.gas,
-                    gasPrice: transactionData.gasPrice,
-                    data: transactionData.data,
-                    value: transactionData.value
-                };
+                if (isWeb3User) {
+                    const web3 = new Web3(window.ethereum);
+                    await ethereum.request({ method: 'eth_requestAccounts' });
+                    const accounts = await web3.eth.getAccounts();
+                    const account = accounts[0];
 
-                // Sign and send the transaction with MetaMask
-                const txnHash = await web3.eth.sendTransaction(txnParams);
+                    const txnParams = {
+                        from: account,
+                        to: transactionData.to,
+                        gas: transactionData.gas,
+                        gasPrice: transactionData.gasPrice,
+                        data: transactionData.data,
+                        value: transactionData.value
+                    };
 
-                // Submit the transaction hash to the server
-                await submitSignedTransaction(txnHash.transactionHash, claimData);
-            } else {
-                // Django User Flow
-                const encryptedPrivateKey = document.getElementById('encrypted_private_key').value;
-                const password = document.getElementById('password').value;
+                    const txnHash = await web3.eth.sendTransaction(txnParams);
+                    await submitSignedTransaction(txnHash.transactionHash, claimData);
+                } else {
+                    const encryptedPrivateKey = document.getElementById('encrypted_private_key').value;
+                    const password = document.getElementById('password').value;
 
-                try {
                     const web3 = new Web3();
-                    // Decrypt the private key using the password
                     const privateKey = await decryptPrivateKey(encryptedPrivateKey, password);
-
-                    // Sign the transaction
                     const signedTransaction = await web3.eth.accounts.signTransaction(transactionData, privateKey);
 
-                    // Submit the signed transaction to the server
                     await submitSignedTransaction(signedTransaction.rawTransaction, claimData);
-                } catch (error) {
-                    console.error('Private key transaction signing failed:', error);
-                    alert('Transaction failed. Please try again.');
                 }
+            } catch (error) {
+                console.error('Error in signAndSubmitClaim:', error);
             }
-        } catch (error) {
-            console.error('Error in signAndSubmitClaim:', error);
         }
-    }
 
-    async function submitSignedTransaction(transactionHashOrRawTransaction, claimData) {
-        try {
-            const isWeb3User = {{ user.is_web3_user|lower }};
-            const payload = isWeb3User ? { txnHash: transactionHashOrRawTransaction } : { signedTransaction: transactionHashOrRawTransaction };
-            payload.claimData = claimData;
+        async function submitSignedTransaction(transactionHashOrRawTransaction, claimData) {
+            try {
+                const isWeb3User = {{ user.is_web3_user|lower }};
+                const payload = isWeb3User ? { txnHash: transactionHashOrRawTransaction } : { signedTransaction: transactionHashOrRawTransaction };
+                payload.claimData = claimData;
 
-            const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+                const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
 
-            const response = await fetch('/create-claim/', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': csrftoken
-                },
-                body: JSON.stringify(payload),
-            });
+                const response = await fetch('/create-claim/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrftoken
+                    },
+                    body: JSON.stringify(payload),
+                });
 
-            if (response.ok) {
-                alert('Transaction submitted successfully!');
-                window.location.href = '/';
-            } else {
-                const errorData = await response.json();
-                console.error('Transaction submission failed:', errorData.error);
-                alert(`Transaction submission failed: ${errorData.error}`);
+                if (response.ok) {
+                    alert('Transaction submitted successfully!');
+                    window.location.href = '/';
+                } else {
+                    const errorData = await response.json();
+                    console.error('Transaction submission failed:', errorData.error);
+                    alert(`Transaction submission failed: ${errorData.error}`);
+                }
+            } catch (error) {
+                console.error('Error in submitSignedTransaction:', error);
+                alert(`An unexpected error occurred: ${error.message}`);
             }
-        } catch (error) {
-            console.error('Error in submitSignedTransaction:', error);
-            alert(`An unexpected error occurred: ${error.message}`);
         }
-    }
-</script>
+    </script>
+
+    <!-- Include Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@3.3.7/dist/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
 </body>
 </html>
-

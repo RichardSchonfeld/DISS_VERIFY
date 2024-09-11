@@ -19,7 +19,7 @@
             <div class="row">
                 <div class="col-sm-12">
                     <div class="logo-menu">
-                        <a href="{% url 'index' %}" class="logo"><img src="{% static 'images/logo.png' %}" alt="Logo"></a>
+                        <!--<a href="{% url 'index' %}" class="logo"><img src="{% static 'images/logo.png' %}" alt="Logo"></a> -->
                         <nav class="navbar-right">
                             <ul id="nav" class="nav navbar-nav">
                                 <li><a href="{% url 'index' %}">Home</a></li>
@@ -38,7 +38,7 @@
     <section id="user-profile" class="section-padding">
         <div class="container">
             <div class="row">
-                <div class="col-md-3">
+                <!--<div class="col-md-3">
                     <div class="profile-sidebar">
                         <div class="profile-userpic">
                             <img src="{% static 'images/user-avatar.png' %}" class="img-responsive" alt="User Avatar">
@@ -52,8 +52,8 @@
                             </div>
                         </div>
                     </div>
-                </div>
-                <div class="col-md-9">
+                </div> -->
+                <div class="col-md-11">
                     <div class="profile-content">
                         <h3>My Claims</h3>
                         <button class="btn btn-primary" onclick="location.href='{% url 'create-claim' %}'">Create a new claim</button>
@@ -72,7 +72,7 @@
                                     <tr>
                                         <td>{{ claim.authority }}</td>
                                         <td><a href="{% url 'claim-detail' claim.claim_id %}">Claim #{{ claim.claim_id }}</a></td>
-                                        <td>{{ claim.year_of_graduation }}</td>
+                                        <td>{{ claim.created_at }}</td>
                                         <td>{{ claim.signed|yesno:"Verified,In-progress,Denied" }}</td>
                                     </tr>
                                     {% endfor %}

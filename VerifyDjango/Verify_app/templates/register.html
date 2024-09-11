@@ -2,37 +2,64 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Register</title>
-    {%  load static %}
 
+    {% load static %}
+
+    <!-- Include Bootstrap and custom CSS files -->
+    <link rel="stylesheet" href="{% static 'css/bootstrap.min.css' %}">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <link rel="stylesheet" href="{% static 'css/responsive.css' %}">
+    <link rel="stylesheet" href="{% static 'css/plugins.css' %}">
+
+    <!-- External JS libraries -->
     <script src="https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js"></script>
     <script src="{% static 'js/encryption.js' %}"></script>
 </head>
-<div>
-    <h1>Register</h1>
-    <form id="registerForm" method="post" onsubmit="event.preventDefault(); registerUser();">
-        {% csrf_token %}
-        <div>
-            <label for="email">Email:</label>
-            <input type="email" id="email" name="email" required>
-        </div>
-        <div>
-            <label for="password1">Password:</label>
-            <input type="password" id="password1" name="password1" required>
-        </div>
-        <div>
-            <label for="password2">Confirm Password:</label>
-            <input type="password" id="password2" name="password2" required>
-        </div>
-        <input type="hidden" id="address" name="address">
-        <input type="hidden" id="encrypted_private_key" name="encrypted_private_key">
-        <button type="submit">Register</button>
-    </form>
+<body>
 
-    <div id="error-message" style="color: red;"></div>
-        <p>{{form_errors}}</p>
+    <div class="container">
+        <h1 class="text-center">Register</h1>
+
+        <!-- Registration form -->
+        <form id="registerForm" method="post" class="form-horizontal" onsubmit="event.preventDefault(); registerUser();">
+            {% csrf_token %}
+
+            <div class="form-group">
+                <label for="email" class="col-sm-2 control-label">Email:</label>
+                <div class="col-sm-10">
+                    <input type="email" id="email" name="email" class="form-control" required>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="password1" class="col-sm-2 control-label">Password:</label>
+                <div class="col-sm-10">
+                    <input type="password" id="password1" name="password1" class="form-control" required>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="password2" class="col-sm-2 control-label">Confirm Password:</label>
+                <div class="col-sm-10">
+                    <input type="password" id="password2" name="password2" class="form-control" required>
+                </div>
+            </div>
+
+            <input type="hidden" id="address" name="address">
+            <input type="hidden" id="encrypted_private_key" name="encrypted_private_key">
+
+            <div class="form-group text-center">
+                <button type="submit" class="btn btn-primary">Register</button>
+            </div>
+        </form>
+
+        <div id="error-message" class="text-danger text-center"></div>
+        <p class="text-center">{{ form_errors }}</p>
     </div>
 
+    <!-- JavaScript logic for form submission and Ethereum account generation -->
     <script>
         async function registerUser() {
             const form = document.getElementById('registerForm');
@@ -65,7 +92,7 @@
                 document.getElementById('error-message').textContent = 'Registration failed: ' + errorMessage;
             }
         }
-
     </script>
+
 </body>
 </html>

@@ -93,6 +93,7 @@ def create_claim(request):
     if request.method == 'POST':
         data = request.body.decode('utf-8')
         web3 = Web3(Web3.HTTPProvider('http://localhost:8545'))
+        #web3 = Web3(Web3.HTTPProvider(settings.INFURA_TEST_URL))
 
         if 'signedTransaction' in data:
             # Django User Flow: Send the signed transaction to the blockchain
@@ -163,9 +164,10 @@ def create_claim(request):
                 _ipfsHash=IPFS_hash
             ).build_transaction({
                 'chainId': 1337,  # Ganache
-                'gas': 500000,
-                'gasPrice': web3.to_wei('50', 'gwei'),
+                'gas': 300000,
+                'gasPrice': web3.to_wei('25', 'gwei'),
                 'nonce': web3.eth.get_transaction_count(wallet_address),
+                'value': 0 # Ensure no ETH is sent this cost me too many hours to discover... SC calls dont' work without it
             })
 
             # Save the IPFS hash in the session for later use
@@ -187,7 +189,6 @@ def create_claim(request):
     else:
         authorities = CustomUser.objects.filter(is_authority=True)
         return render(request, 'create_claim.html', {'authorities': authorities})
-
 
 def view_claims(request):
     claims = get_claim()
@@ -487,6 +488,13 @@ def user_profile_view(request):
         claims = []
         for claim_id in claim_ids:
             claim = verify_contract_instance.functions.getClaim(claim_id).call()
+            claim_created_at = 'Error'
+            try:
+                claim_db = Claim.objects.get(claim_id=claim_id)
+                claim_created_at = claim_db.created_at
+            except Exception as e:
+                # LOG #
+                pass
 
             # Retrieve authority address from the claim
             authority_address = claim[1]
@@ -499,6 +507,7 @@ def user_profile_view(request):
                 'requester': claim[0],
                 'authority': authority_name,  # Use the resolved authority name
                 'ipfs_hash': claim[2],
+                'created_at': claim_created_at,
                 'signed': claim[3],
             })
 
