@@ -365,7 +365,7 @@ def sign_certificate_view(request):
         # Estimate gas for the transaction
         gas_estimate = verify_contract_instance.functions.signClaim(
             int(claim_id),
-            "0x0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",  # Placeholder for the signature, to be replaced in the frontend
+            "MEUCIQC03/JJpUtxqeju5oVFP1QVsVNOA4Oet7HCqEAqhPBFuMchAiEAUZtCPXFfjIUnKCLvrACVgR723/WuMdZxepsy00tItmzP",  # Placeholder for the signature, to be replaced in the frontend
             ipfs_hash
         ).estimate_gas({
             'from': wallet_address
@@ -377,7 +377,7 @@ def sign_certificate_view(request):
             ipfs_hash
         ).build_transaction({
             'chainId': 1337,
-            'gas': gas_estimate,
+            'gas': gas_estimate + 5000,
             'gasPrice': web3.eth.gas_price,
             'nonce': web3.eth.get_transaction_count(request.user.address),
             'value': 0
