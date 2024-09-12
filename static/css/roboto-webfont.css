@@ -39,8 +39,7 @@
     src: url('../fonts/RobotoCondensed-Bold-webfont.eot');
     src: url('../fonts/RobotoCondensed-Bold-webfont.eot?#iefix') format('embedded-opentype'),
          url('../fonts/RobotoCondensed-Bold-webfont.woff') format('woff'),
-         url('../fonts/RobotoCondensed-Bold-webfont.ttf') format('truetype'),
-         url('RobotoCondensed-Bold-webfont.svg#roboto_condensedbold') format('svg');
+         url('../fonts/RobotoCondensed-Bold-webfont.ttf') format('truetype');
     font-weight: normal;
     font-style: normal;
 

@@ -495,17 +495,6 @@ textarea::-ms-input-placeholder
 
 /*for image bg*/
 
-
-/*.img-bg{
-  background: url(../images/home-msg.jpg) no-repeat center top fixed;
-   background-size: cover;
-  -moz-background-size: cover;
-  -webkit-background-size: cover;
-  -o-background-size: cover;
-  width: 100%;
-  overflow: hidden;
-}*/
-
 /*For Our Global CSS*/
 .heading-content h1{
     font-size:48px;
