@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>View Certificate</title>
+</head>
+<body>
+    <h1>Your Signed Certificates</h1>
+
+    {% if certificates %}
+        <ul>
+            {% for certificate in certificates %}
+                <li>
+                    Claim ID: {{ certificate.claim.claim_id }}<br>
+                    Authority: {{ certificate.authority.username }}<br>
+                    Signature Status: {{ "Signed" if certificate.signature else "Unsigned" }}<br>
+                    <a href="{{ certificate.file.url }}" download>Download Certificate</a>
+                </li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p>No certificates found.</p>
+    {% endif %}
+</body>
+</html>
