@@ -24,7 +24,7 @@
         <h1>Sign Your Certificate</h1>
 
         <!-- Form to select claim and sign certificate -->
-        <form id="decrypt-form" method="POST" action="{% url 'sign_certificate' %}">
+        <form id="decrypt-form" method="POST" action="{% url 'sign-certificate' %}">
             {% csrf_token %}
             <div class="form-group">
                 <label for="claim">Select Claim:</label>
@@ -40,8 +40,7 @@
 
         <!-- Certificate container, hidden by default -->
         <div id="certificate-container" style="display:none;">
-            <h2>Certificate Data</h2>
-            <pre id="certificate-data"></pre>
+            <pre id="certificate-data" style="display: none;"></pre>
 
             <!-- PDF preview section -->
             <h2>Certificate PDF Preview</h2>
@@ -98,7 +97,7 @@
                 const expectedIPFSCid = data.ipfs_cid;
 
                 // Initialize Web3
-                const web3 = new Web3(window.ethereum || new Web3.providers.HttpProvider('http://localhost:8545'));
+                const web3 = new Web3(window.ethereum || new Web3.providers.HttpProvider('https://sepolia.infura.io/v3/813a1ccfc5874e07956829e7876fd311'));
                 const contract = new web3.eth.Contract(contractAbi, contractAddress);
 
                 // Prepare the signing process when the user clicks the "Sign Certificate" button

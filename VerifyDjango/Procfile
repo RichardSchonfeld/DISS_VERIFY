@@ -1,0 +1,1 @@
+web gunicorn verify.wsgi:application --log-file -

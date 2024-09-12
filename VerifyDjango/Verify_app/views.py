@@ -42,11 +42,31 @@ from reportlab.pdfgen import canvas
 
 
 def index(request):
-    # Fetch institutions that have signed up (authorities)
-    institutions = CustomUser.objects.filter(is_authority=True)
-    return render(request, "home.html", {
-        'institutions': institutions,
-    })
+    if request.user.is_authenticated:
+        user = request.user
+
+        if user.is_authority:
+            # Fetch pending claims for the authority user
+            pending_claims_count = Claim.objects.filter(authority=user, signed=False).count()
+            return render(request, 'home.html', {
+                'pending_claims_count': pending_claims_count,
+                'is_authority': True
+            })
+        else:
+            # Fetch institutions that have signed up (authorities)
+            institutions = CustomUser.objects.filter(is_authority=True)
+            return render(request, 'home.html', {
+                'institutions': institutions,
+                'is_authority': False
+            })
+    else:
+        # For non-logged-in users, show institutions
+        institutions = CustomUser.objects.filter(is_authority=True)
+        return render(request, 'home.html', {
+            'institutions': institutions,
+            'is_authority': False,
+            'guest': True
+        })
 
 def login_view(request):
     if request.method == "POST":
@@ -76,9 +96,10 @@ def register(request):
             user.save()
 
             ### ----- TEMPORARY user fund initial ----- ###
-            fund_account(user.address)
+            #fund_account(user.address)
             ### ----- END TEMP ----- ###
 
+            login(request, user)
             return redirect('index')
         else:
             # If the form is not valid, return the form with errors
@@ -99,7 +120,7 @@ def register_authority(request):
             user.save()
 
             # Optionally, fund the account (for Ethereum-based operations)
-            fund_account(user.address)
+            #fund_account(user.address)
 
             return redirect('index')
         else:
@@ -118,8 +139,7 @@ def transaction_confirmation(request):
 def create_claim(request):
     if request.method == 'POST':
         data = request.body.decode('utf-8')
-        web3 = Web3(Web3.HTTPProvider('http://localhost:8545'))
-        #web3 = Web3(Web3.HTTPProvider(settings.INFURA_TEST_URL))
+        web3 = Web3(Web3.HTTPProvider(settings.WEB3_URL))
 
         if 'signedTransaction' in data:
             # Django User Flow: Send the signed transaction to the blockchain
@@ -184,14 +204,23 @@ def create_claim(request):
             # Distributing Shamir keys to local profiles
             store_and_distribute_key_fragments(shares, user_profile, authority_address, IPFS_hash)
 
+            gas_estimate = verify_contract_instance.functions.createClaim(
+                _requester=wallet_address,
+                _authority=authority_address,
+                _ipfsHash=IPFS_hash
+            ).estimate_gas({
+                'from': wallet_address,
+                'value': 0
+            })
+
             transaction = verify_contract_instance.functions.createClaim(
                 _requester=wallet_address,
                 _authority=authority_address,
                 _ipfsHash=IPFS_hash
             ).build_transaction({
                 'chainId': 1337,  # Ganache
-                'gas': 300000,
-                'gasPrice': web3.to_wei('25', 'gwei'),
+                'gas': gas_estimate,
+                'gasPrice': web3.eth.gas_price,
                 'nonce': web3.eth.get_transaction_count(wallet_address),
                 'value': 0 # Ensure no ETH is sent this cost me too many hours to discover... SC calls dont' work without it
             })
@@ -320,12 +349,27 @@ def sign_certificate_view(request):
 
 
         # Prepare the transaction data for blockchain signing
-        web3 = Web3(Web3.HTTPProvider('http://localhost:8545'))
+        web3 = Web3(Web3.HTTPProvider(settings.WEB3_URL))
         contract_address = settings.CONTRACT_ADDRESS
         with open('build/contracts/Verify.json') as f:
             contract_data = json.load(f)
             contract_abi = contract_data['abi']
         verify_contract_instance = web3.eth.contract(address=contract_address, abi=contract_abi)
+
+        user_profile = request.user
+        wallet_address = Web3.to_checksum_address(user_profile.address)
+
+        user_profile = request.user
+        wallet_address = Web3.to_checksum_address(user_profile.address)
+
+        # Estimate gas for the transaction
+        gas_estimate = verify_contract_instance.functions.signClaim(
+            int(claim_id),
+            "0x0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",  # Placeholder for the signature, to be replaced in the frontend
+            ipfs_hash
+        ).estimate_gas({
+            'from': wallet_address
+        })
 
         transaction = verify_contract_instance.functions.signClaim(
             int(claim_id),
@@ -333,8 +377,8 @@ def sign_certificate_view(request):
             ipfs_hash
         ).build_transaction({
             'chainId': 1337,
-            'gas': 500000,
-            'gasPrice': web3.to_wei('50', 'gwei'),
+            'gas': gas_estimate,
+            'gasPrice': web3.eth.gas_price,
             'nonce': web3.eth.get_transaction_count(request.user.address),
             'value': 0
         })
@@ -347,7 +391,8 @@ def sign_certificate_view(request):
             "selected_claim_id": claim_id,
             "contract_abi": contract_abi,
             "contract_address": contract_address,
-            "ipfs_cid": ipfs_hash  # Return the CID to the frontend
+            "ipfs_cid": ipfs_hash,  # Return the CID to the frontend,
+            "web3_url": settings.WEB3_URL
         })
 
     # Render list of unsigned claims
@@ -413,7 +458,7 @@ def view_certificate(request):
 def verify_signature(request):
     """
     Verify the signature of the uploaded certificate using the claim ID and authority address.
-    Provide cryptographic proof by retrieving the transaction hash from the database.
+    Fetch claim data and signature directly from the blockchain.
     """
     if request.method == 'POST':
         uploaded_file = request.FILES.get('uploaded_certificate')
@@ -430,7 +475,7 @@ def verify_signature(request):
 
         try:
             claim_id = int(metadata.get('/ClaimID'))
-            authority_address = metadata.get('/AuthorityAddress')
+            authority_address = Web3.to_checksum_address(metadata.get('/AuthorityAddress'))
         except Exception as e:
             return JsonResponse({
                 'status': 'Error: Certificate metadata is invalid or incomplete',
@@ -438,24 +483,9 @@ def verify_signature(request):
                 'verified_by': 'N/A'
             })
 
-        # Locate the corresponding certificate in the database
-        try:
-            cert_claim = Claim.objects.get(claim_id=claim_id)
-            authority = CustomUser.objects.get(address=authority_address)
-            certificate = Certificate.objects.get(claim=cert_claim, authority=authority)
-        except Certificate.DoesNotExist:
-            return JsonResponse({
-                'status': 'Error: No certificate found with the provided metadata',
-                'verified': False,
-                'verified_by': 'N/A'
-            })
+        web3 = Web3(Web3.HTTPProvider(settings.WEB3_URL))
 
-        # Hash the file to compare it to the on-chain data
-        file_hash = hashlib.sha256(pdf_file).hexdigest()
-
-        web3 = Web3(Web3.HTTPProvider('http://localhost:8545'))
-
-        # Load the contract
+        # Load the contract ABI and address
         with open('build/contracts/Verify.json') as f:
             contract_data = json.load(f)
             contract_abi = contract_data['abi']
@@ -463,39 +493,69 @@ def verify_signature(request):
         contract_address = settings.CONTRACT_ADDRESS
         contract = web3.eth.contract(address=contract_address, abi=contract_abi)
 
-        # Get certificate signature from the smart contract
-        signature = contract.functions.getCertSignature(claim_id).call()
+        try:
+            # Fetch claim data from the blockchain by claim ID
+            claim_data = contract.functions.getClaim(claim_id).call()
 
-        # Verify the signature
-        message = encode_defunct(hexstr=file_hash)
-        recovered_address = web3.eth.account.recover_message(
-            message,
-            signature=signature
-        )
+            # Verify that the authority matches the one stored on-chain
+            if authority_address.lower() != claim_data[1].lower():
+                return JsonResponse({
+                    'status': 'Error: The authority address does not match the one on the blockchain',
+                    'verified': False,
+                    'verified_by': 'N/A'
+                })
 
-        # Retrieve transaction hash from the database
-        txn_hash = certificate.txn_hash
+            # Hash the file to compare it to the on-chain data
+            file_hash = hashlib.sha256(pdf_file).hexdigest()
 
-        # Compare hashes and verify the signature
-        if recovered_address.lower() == certificate.authority.address.lower():
+            # Fetch the certificate signature from the blockchain
+            on_chain_signature = contract.functions.getCertSignature(claim_id).call()
+
+            # Verify the on-chain signature with the recovered address
+            message = encode_defunct(hexstr=file_hash)
+            recovered_address = web3.eth.account.recover_message(message, signature=on_chain_signature)
+
+            # Fetch the transaction hash directly from the blockchain logs
+            logs = contract.events.ClaimSigned.create_filter(
+                fromBlock=0,
+                argument_filters={'claimId': claim_id}
+            ).get_all_entries()
+
+            if not logs:
+                return JsonResponse({
+                    'status': 'Error: No transaction log found for the claim ID',
+                    'verified': False,
+                    'verified_by': 'N/A'
+                })
+
+            # Get the transaction hash from the first matching log
+            txn_hash = logs[0].transactionHash.hex()
+
+            # Compare the recovered address with the authority's address on-chain
+            if recovered_address.lower() == authority_address.lower():
+                authority = CustomUser.objects.get(address=authority_address)
+                return JsonResponse({
+                    'status': 'success',
+                    'verified': True,
+                    'verified_by': authority.institution_name,
+                    'transaction_hash': txn_hash,
+                    'etherscan_url': f"https://sepolia.etherscan.io/tx/{txn_hash}"
+                })
+            else:
+                return JsonResponse({
+                    'status': 'Error: Signature mismatch',
+                    'verified': False,
+                    'verified_by': 'N/A'
+                })
+
+        except Exception as e:
             return JsonResponse({
-                'status': 'success',
-                'verified': True,
-                'verified_by': certificate.authority.institution_name,
-                'transaction_hash': txn_hash,  # Return transaction hash from the database
-                'etherscan_url': f"https://etherscan.io/tx/{txn_hash}"  # Provide a link to view on Etherscan
-            })
-        else:
-            return JsonResponse({
-                'status': 'success',
+                'status': f"Error: {str(e)}",
                 'verified': False,
-                'verified_by': certificate.authority.address,
-                'transaction_hash': txn_hash,
-                'etherscan_url': f"https://etherscan.io/tx/{txn_hash}"
+                'verified_by': 'N/A'
             })
 
     return render(request, 'verify_certificate.html')
-
 
 
 
@@ -508,7 +568,7 @@ def user_profile_view(request):
         user_address = user.address  # Assuming you store user's Ethereum address in CustomUser model
 
         # Connect to Ethereum blockchain
-        web3 = Web3(Web3.HTTPProvider('http://localhost:8545'))
+        web3 = Web3(Web3.HTTPProvider(settings.WEB3_URL))
 
         # Load the contract
         with open('build/contracts/Verify.json') as f:
@@ -552,6 +612,25 @@ def user_profile_view(request):
         return render(request, 'user_profile.html', {'error': 'User not authenticated'})
 
 
+def authority_profile_view(request):
+    user = request.user
+
+    if user.is_authenticated and user.is_authority:
+        # Fetch pending claims (i.e., claims that are not signed yet) for the logged-in authority
+        pending_claims = Claim.objects.filter(authority=user, signed=False)
+
+        # Fetch signed claims for the logged-in authority
+        signed_claims = Claim.objects.filter(authority=user, signed=True)
+
+        return render(request, 'authority_profile.html', {
+            'pending_claims': pending_claims,
+            'signed_claims': signed_claims
+        })
+    else:
+        return render(request, 'authority_profile.html', {'error': 'User not authenticated or not an authority'})
+
+
+
 def decrypt_certificate_view(request, ipfs_hash):
     """
     View to retrieve and decrypt an encrypted certificate from IPFS using the user's and server's key fragments.
@@ -582,7 +661,7 @@ def claim_detail_view(request, claim_id):
 
     if user.is_authenticated:
         # Connect to Ethereum blockchain
-        web3 = Web3(Web3.HTTPProvider('http://localhost:8545'))
+        web3 = Web3(Web3.HTTPProvider(settings.WEB3_URL))
 
         # Load the contract
         with open('build/contracts/Verify.json') as f:
@@ -653,6 +732,21 @@ def decrypt_claim(request):
     return render(request, 'decrypt_claim.html')
 
 
+@login_required
+def decrypt_private_key_view(request):
+    """View to handle decrypting and displaying the private key."""
+
+    user_profile = request.user
+    encrypted_private_key = user_profile.encrypted_private_key
+
+    if not encrypted_private_key:
+        return JsonResponse({'error': 'No private key found for this user'}, status=404)
+
+
+    context = {
+        'encrypted_private_key': encrypted_private_key
+    }
+    return render(request, 'decrypt_private_key.html', context)
 
 
 @login_required

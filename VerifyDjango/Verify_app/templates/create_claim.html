@@ -62,7 +62,7 @@
                                 <label for="authority">Select Authority:</label>
                                 <select class="form-control" id="authority" name="authority" required>
                                     {% for authority in authorities %}
-                                        <option value="{{ authority.address }}">{{ authority.username }}</option>
+                                        <option value="{{ authority.address }}">{{ authority.institution_name }}</option>
                                     {% endfor %}
                                 </select>
                             </div>

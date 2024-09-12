@@ -44,7 +44,18 @@
                         <p><strong>Requester:</strong> {{ claim.requester }}</p>
                         <p><strong>Authority:</strong> {{ claim.authority }}</p>
                         <p><strong>IPFS Hash:</strong> {{ claim.ipfs_hash }}</p>
-                        <p><strong>Decrypted data:</strong> {{ claim.decrypted_data }}</p>
+
+                        <!-- Show PDF preview if the claim is signed and PDF exists -->
+                        {% if claim.signed and claim.decrypted_data %}
+                            <h4>Certificate Preview</h4>
+                            <embed src="data:application/pdf;base64,{{ claim.decrypted_data }}" width="600" height="800" type="application/pdf" />
+
+                            <!-- Provide Download Link for the PDF -->
+                            <a href="data:application/pdf;base64,{{ claim.decrypted_data }}" download="certificate.pdf" class="btn btn-success">Download Certificate</a>
+                        {% else %}
+                            <p><strong>Decrypted Data:</strong> {{ claim.decrypted_data }}</p>
+                        {% endif %}
+
                         <p><strong>Signed:</strong> {{ claim.signed }}</p>
                         <button class="btn btn-primary" onclick="location.href='{% url 'user-profile' %}'">Back to Claims</button>
                     </div>

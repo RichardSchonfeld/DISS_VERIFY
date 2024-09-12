@@ -1,198 +1,206 @@
 <!doctype html>
 <html class="no-js" lang="">
-    <head>
-        <meta charset="utf-8">
-        <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
-        <title>Decentralized Claims Verification DApp</title>
-        {% load static %}
-        <meta name="description" content="Secure and decentralized way to manage and verify claims using Ethereum and IPFS.">
-        <meta name="viewport" content="width=device-width, initial-scale=1">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <title>Decentralized Claims Verification DApp</title>
+    {% load static %}
+    <meta name="description" content="Secure and decentralized way to manage and verify claims using Ethereum and IPFS.">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
 
-        <!-- Include CSS Files from the Django Static Folder -->
-        <link rel="stylesheet" href="{% static 'css/bootstrap.min.css' %}">
-        <link rel="stylesheet" href="{% static 'css/style.css' %}">
-        <link rel="stylesheet" href="{% static 'css/responsive.css' %}">
-        <link rel="stylesheet" href="{% static 'css/plugins.css' %}">
-        <link rel="stylesheet" href="{% static 'css/roboto-webfont.css' %}">
+    <!-- Include CSS Files from the Django Static Folder -->
+    <link rel="stylesheet" href="{% static 'css/bootstrap.min.css' %}">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <link rel="stylesheet" href="{% static 'css/responsive.css' %}">
+    <link rel="stylesheet" href="{% static 'css/plugins.css' %}">
+    <link rel="stylesheet" href="{% static 'css/roboto-webfont.css' %}">
 
-        <script src="{% static 'js/vendor/modernizr-2.8.3-respond-1.4.2.min.js' %}"></script>
-    </head>
-    <body>
+    <script src="{% static 'js/vendor/modernizr-2.8.3-respond-1.4.2.min.js' %}"></script>
+</head>
+<body>
 
-        <!-- Navigation with Login and Register buttons -->
-        <nav class="navbar navbar-default">
-            <div class="container">
-                <div class="navbar-header">
-                    <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar-collapse" aria-expanded="false">
-                        <span class="sr-only">Toggle navigation</span>
-                        <span class="icon-bar"></span>
-                        <span class="icon-bar"></span>
-                        <span class="icon-bar"></span>
-                    </button>
-                    <!--<a class="navbar-brand" href="#">
-                        <img src="{% static 'images/logo.png' %}" alt="" width="50" height="24">
-                    </a> -->
-                </div>
+    <!-- Navigation with Login and Register buttons -->
+    <nav class="navbar navbar-default">
+        <div class="container">
+            <div class="navbar-header">
+                <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar-collapse" aria-expanded="false">
+                    <span class="sr-only">Toggle navigation</span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                </button>
+            </div>
 
-                <div class="collapse navbar-collapse" id="navbar-collapse">
-                    <ul class="nav navbar-nav navbar-right">
-                        <li class="active"><a href="#home">Home</a></li>
-                        <li><a href="#features">Features</a></li>
-                        <li><a href="#service">Services</a></li>
-                        <li><a href="#price">Pricing</a></li>
-                        <li><a href="#business">Our Solution</a></li>
+            <div class="collapse navbar-collapse" id="navbar-collapse">
+                <ul class="nav navbar-nav navbar-right">
+                    <li class="active"><a href="{% url 'index' %}">Home</a></li>
+                    <li><a href="#features">Features</a></li>
+                    <li><a href="#service">Services</a></li>
+                    <li><a href="#price">Pricing</a></li>
+                    <li><a href="#business">Our Solution</a></li>
+                    {% if user.is_authenticated %}
                         <li><a class="btn btn-danger" href="{% url 'user-profile' %}">My profile</a></li>
+                        <li><a href="{% url 'logout' %}" class="btn btn-warning">Logout</a></li>
+                    {% else %}
                         <li><a class="btn btn-success" href="{% url 'login' %}">Sign In</a></li>
                         <li><a class="btn btn-warning text-white" href="{% url 'register' %}">Register</a></li>
-                    </ul>
-                </div>
+                    {% endif %}
+                </ul>
             </div>
-        </nav>
+        </div>
+    </nav>
 
-        <!-- Home Section with Institution Dropdown -->
-        <header id="home" class="home">
-            <div class="overlay-fluid-block">
-                <div class="container text-center">
-                    <div class="row">
-                        <div class="home-wrapper">
-                            <div class="col-md-10 col-md-offset-1">
-                                <div class="home-content">
-                                    <h1>Decentralized Claims Verification</h1>
-                                    <p>Securely manage and verify your claims using blockchain technology and IPFS. Our platform ensures that your data is encrypted, decentralized, and always accessible.</p>
-                                    <div class="row">
-                                        <div class="col-md-6 col-md-offset-3 col-sm-12 col-xs-12">
-                                            <div class="home-contact">
-                                                <!-- Institution Dropdown and Go button -->
-                                                <div class="input-group">
-                                                    <select class="form-control" id="institutionSelect" required>
-                                                        <option value="" selected disabled>Select an Institution</option>
-                                                        {% for institution in institutions %}
-                                                            <option value="{{ institution.id }}">{{ institution.institution_name }}</option>
-                                                        {% endfor %}
-                                                    </select>
-                                                    <input type="button" class="btn btn-primary" id="goButton" value="Create a claim">
+    <!-- Home Section -->
+    <header id="home" class="home">
+        <div class="overlay-fluid-block">
+            <div class="container text-center">
+                <div class="row">
+                    <div class="home-wrapper">
+                        <div class="col-md-10 col-md-offset-1">
+                            <div class="home-content">
+                                <h1>Decentralized Claims Verification</h1>
+                                <p>Securely manage and verify your claims using blockchain technology and IPFS. Our platform ensures that your data is encrypted, decentralized, and always accessible.</p>
+
+                                {% if user.is_authenticated %}
+                                    {% if user.is_authority %}
+                                        <div class="row">
+                                            <div class="col-md-6 col-md-offset-3 col-sm-12 col-xs-12">
+                                                <h3>You have {{ pending_claims_count }} pending claims</h3>
+                                                <button class="btn btn-primary" onclick="location.href='{% url 'authority-profile' %}'">View Pending Claims</button>
+                                            </div>
+                                        </div>
+                                    {% else %}
+                                        <div class="row">
+                                            <div class="col-md-6 col-md-offset-3 col-sm-12 col-xs-12">
+                                                <div class="home-contact">
+                                                    <!-- Institution Dropdown and Go button -->
+                                                    <div class="input-group">
+                                                        <select class="form-control" id="institutionSelect" required>
+                                                            <option value="" selected disabled>Select an Institution</option>
+                                                            {% for institution in institutions %}
+                                                                <option value="{{ institution.id }}">{{ institution.institution_name }}</option>
+                                                            {% endfor %}
+                                                        </select>
+                                                        <input type="button" class="btn btn-primary" id="goButton" value="Create a claim">
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
-                                    </div>
-                                </div>
+                                    {% endif %}
+                                {% else %}
+                                    <p>Please <a href="{% url 'login' %}">log in</a> or <a href="{% url 'register' %}">register</a> to manage claims.</p>
+                                {% endif %}
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-        </header>
+        </div>
+    </header>
 
-        <!-- Features Section -->
-        <section id="features" class="features sections">
-            <div class="container">
-                <div class="row">
-                    <div class="main_features_content2">
-                        <div class="col-sm-6">
-                            <div class="single_features_left text-center">
-                                <img src="{% static 'images/home_blockchain_CP_1.png' %}" alt="" />
-                            </div>
+    <!-- Features Section -->
+    <section id="features" class="features sections">
+        <div class="container">
+            <div class="row">
+                <div class="main_features_content2">
+                    <div class="col-sm-6">
+                        <div class="single_features_left text-center">
+                            <img src="{% static 'images/home_blockchain_CP_1.png' %}" alt="" />
                         </div>
-                        <div class="col-sm-6 margin-top-60">
-                            <div class="single_features_right ">
-                                <h2>Key Features</h2>
-                                <p>Our DApp provides a robust and secure platform for managing and verifying claims.</p>
-                                <ul>
-                                    <li>Blockchain-based claim management</li>
-                                    <li>Data encryption and IPFS storage</li>
-                                    <li>Decentralized access control</li>
-                                </ul>
-                                <div class="features_buttom">
-                                    <a href="#" class="btn btn-default">Learn More</a>
-                                </div>
+                    </div>
+                    <div class="col-sm-6 margin-top-60">
+                        <div class="single_features_right ">
+                            <h2>Key Features</h2>
+                            <p>Our DApp provides a robust and secure platform for managing and verifying claims.</p>
+                            <ul>
+                                <!-- <li>Blockchain-based claim management</li>
+                                <li>Data encryption and IPFS storage</li>
+                                <li>Decentralized access control</li> -->
+                            </ul>
+                            <div class="features_buttom">
+                                <a href="{% url 'verify-signature' %}" class="btn btn-default">Verify a claim!</a>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-        </section>
+        </div>
+    </section>
 
-        <!-- Services Section -->
-        <section id="service" class="service2 sections lightbg">
-            <div class="container">
-                <div class="row">
-                    <div class="main_service2">
-                        <div class="head_title text-center">
-                            <h2>Our Services</h2>
-                            <p>Explore the variety of services we provide to support your secure claim verification needs.</p>
+    <!-- Services Section -->
+    <section id="service" class="service2 sections lightbg">
+        <div class="container">
+            <div class="row">
+                <div class="main_service2">
+                    <div class="head_title text-center">
+                        <h2>Our Services</h2>
+                        <p>Explore the variety of services we provide to support your secure claim verification needs.</p>
+                    </div>
+                    <div class="service_content">
+                        <div class="col-md-6 col-sm-6">
+                            <div class="single_service2">
+                                <div class="single_service_left">
+                                    <img src="{% static 'images/flaticon1.png' %}" alt="" />
+                                </div>
+                                <div class="single_service_right">
+                                    <h2>Claim Verification</h2>
+                                    <p>Ensure the authenticity of claims with decentralized verification through Ethereum smart contracts.</p>
+                                </div>
+                            </div>
                         </div>
-                        <div class="service_content">
-                            <div class="col-md-6 col-sm-6">
-                                <div class="single_service2">
-                                    <div class="single_service_left">
-                                        <img src="{% static 'images/flaticon1.png' %}" alt="" />
-                                    </div>
-                                    <div class="single_service_right">
-                                        <h2>Claim Verification</h2>
-                                        <p>Ensure the authenticity of claims with decentralized verification through Ethereum smart contracts.</p>
-                                    </div>
+                        <div class="col-md-6 col-sm-6">
+                            <div class="single_service2">
+                                <div class="single_service_left">
+                                    <img src="{% static 'images/flaticon2.png' %}" alt="" />
+                                </div>
+                                <div class="single_service_right">
+                                    <h2>Encrypted Storage</h2>
+                                    <p>Store your claim data securely on IPFS with end-to-end encryption and key management.</p>
                                 </div>
                             </div>
-                            <div class="col-md-6 col-sm-6">
-                                <div class="single_service2">
-                                    <div class="single_service_left">
-                                        <img src="{% static 'images/flaticon2.png' %}" alt="" />
-                                    </div>
-                                    <div class="single_service_right">
-                                        <h2>Encrypted Storage</h2>
-                                        <p>Store your claim data securely on IPFS with end-to-end encryption and key management.</p>
-                                    </div>
+                        </div>
+                        <div class="col-md-6 col-sm-6">
+                            <div class="single_service2">
+                                <div class="single_service_left">
+                                    <img src="{% static 'images/flaticon3.png' %}" alt="" />
+                                </div>
+                                <div class="single_service_right">
+                                    <h2>Decentralized Access</h2>
+                                    <p>Access your claims anytime, anywhere with our decentralized DApp.</p>
                                 </div>
                             </div>
-                            <div class="col-md-6 col-sm-6">
-                                <div class="single_service2">
-                                    <div class="single_service_left">
-                                        <img src="{% static 'images/flaticon3.png' %}" alt="" />
-                                    </div>
-                                    <div class="single_service_right">
-                                        <h2>Decentralized Access</h2>
-                                        <p>Access your claims anytime, anywhere with our decentralized DApp.</p>
-                                    </div>
+                        </div>
+                        <div class="col-md-6 col-sm-6">
+                            <div class="single_service2">
+                                <div class="single_service_left">
+                                    <img src="{% static 'images/flaticon4.png' %}" alt="" />
                                 </div>
-                            </div>
-                            <div class="col-md-6 col-sm-6">
-                                <div class="single_service2">
-                                    <div class="single_service_left">
-                                        <img src="{% static 'images/flaticon4.png' %}" alt="" />
-                                    </div>
-                                    <div class="single_service_right">
-                                        <h2>Support and Integration</h2>
-                                        <p>We provide full support for integrating our DApp with your existing systems.</p>
-                                    </div>
+                                <div class="single_service_right">
+                                    <h2>Support and Integration</h2>
+                                    <p>We provide full support for integrating our DApp with your existing systems.</p>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-        </section>
+        </div>
+    </section>
 
         <!-- Include JavaScript files -->
         <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@3.3.7/dist/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
 
         <script>
-            document.getElementById('goButton').addEventListener('click', function() {
-                const institution = document.getElementById('institutionSelect').value;
+        document.getElementById('goButton').addEventListener('click', function() {
+            const institution = document.getElementById('institutionSelect').value;
 
-                if (institution) {
-                    // Check if the user is logged in (dummy check for now)
-                    const isLoggedIn = {{ user.is_authenticated|yesno:"true,false" }};
-
-                    if (isLoggedIn) {
-                        // Redirect to the create claim form
-                        window.location.href = "{% url 'create-claim' %}?institution=" + institution;
-                    } else {
-                        // Redirect to login
-                        window.location.href = "{% url 'login' %}";
-                    }
-                }
-            });
-        </script>
+            if (institution) {
+                window.location.href = "{% url 'create-claim' %}?institution=" + institution;
+            } else {
+                alert('Please select an institution');
+            }
+        });
+    </script>
     </body>
 </html>

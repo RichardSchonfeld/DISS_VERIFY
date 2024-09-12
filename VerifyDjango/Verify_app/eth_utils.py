@@ -12,7 +12,8 @@ with open('build/contracts/Verify.json') as f:
 contract_address = settings.CONTRACT_ADDRESS
 
 # Connect to local Ganache
-web3 = Web3(Web3.HTTPProvider('http://localhost:8545'))
+web3 = Web3(Web3.HTTPProvider(settings.WEB3_URL))
+#web3 = Web3(Web3.HTTPProvider(settings.INFURA_TEST_URL))
 
 # Initialize the contract
 contract = web3.eth.contract(address=contract_address, abi=contract_abi)

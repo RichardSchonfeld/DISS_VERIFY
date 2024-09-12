@@ -1,11 +1,13 @@
 from pathlib import Path
 import os
+import django_heroku
+import dj_database_url
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = 'django-insecure-#your_secret_key_here'
 DEBUG = True
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['*']
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -84,15 +86,22 @@ USE_I18N = True
 USE_L10N = True
 USE_TZ = True
 STATIC_URL = '/static/'
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 STATICFILES_DIRS = [BASE_DIR / "static"]
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+django_heroku.settings(locals())
+
 # Infura API variables
-INFURA_TEST_URL = 'https://sepolia.infura.io/v3/' + os.getenv('INFURA_NETWORK_ID')
+INFURA_TEST_URL = 'https://sepolia.infura.io/v3/'
+if os.getenv('INFURA_NETWORK_ID'):
+    INFURA_TEST_URL = 'https://sepolia.infura.io/v3/' + os.getenv('INFURA_NETWORK_ID')
 INFURA_API_KEY = os.getenv('INFURA_API_KEY')
 INFURA_API_SECRET = os.getenv('INFURA_API_KEY_SECRET')
 
+LOCAL_TEST_URL = 'http://localhost:8545'
 
+WEB3_URL = 'https://eth-sepolia.g.alchemy.com/v2/aYWWiwfNOVekgXAEAKCgLB7qPpmRLCkS'
 
 # Ensuring presence of vars loaded
 #if not all([INFURA_API_KEY, INFURA_API_SECRET]):
@@ -112,8 +121,9 @@ SERVER_OP_ACC_ADDRESS = os.getenv('SERVER_OP_ACC_ADDRESS')
 
 ETHEREUM_NODE_URL = 'http://localhost:8545'
 #CONTRACT_ADDRESS = '0x87B4AAba7c69BB9880914Ddfa0bc25d401480d3d'
-CONTRACT_ADDRESS = '0x6ea65CA9671328ED6e030F5f4Ab0C0079E35736F'
-# sepolia: CONTRACT_ADDRESS = '0xC4331f728306632F130E7C14e09d62b9ca0788fA'
+# ganache local ver2: CONTRACT_ADDRESS = '0x1D6f99685c0a3Db81FA3C9F7A148CC61e54a1809'
+# Sepolia contract addr old 0xC4331f728306632F130E7C14e09d62b9ca0788fA
+CONTRACT_ADDRESS = '0xf9279ee3822a8AA68E384fC688E129fCB896fE6f'
 PUBLIC_KEY = '0x5b5E779329cA0166Bc90CF3A5e54bcC465974588'
 PRIVATE_KEY = os.getenv('DAPP_PRIVATE_KEY')
 CONTRACT_ABI = [

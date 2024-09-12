@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Decrypt Private Key</title>
+
+    {% load static %}
+
+    <!-- Include CSS Files -->
+    <link rel="stylesheet" href="{% static 'css/bootstrap.min.css' %}">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <link rel="stylesheet" href="{% static 'css/responsive.css' %}">
+    <link rel="stylesheet" href="{% static 'css/plugins.css' %}">
+    <link rel="stylesheet" href="{% static 'css/roboto-webfont.css' %}">
+
+    <script src="{% static 'js/encryption.js' %}"></script>
+</head>
+<body>
+
+    <div class="container">
+        <h1 class="text-center">Decrypt Your Private Key</h1>
+        <input type="hidden" id="encrypted_private_key" value="{{encrypted_private_key}}">
+        <form id="decrypt-form" class="form-horizontal" onsubmit="event.preventDefault(); decryptPrivateKeyCall();">
+            <div class="form-group">
+                <label for="password" class="col-sm-2 control-label">Enter your password:</label>
+                <div class="col-sm-10">
+                    <input type="password" id="password" name="password" class="form-control" required>
+                </div>
+            </div>
+
+            <div class="form-group text-center">
+                <button type="submit" class="btn btn-primary">Decrypt Private Key</button>
+            </div>
+
+            <div id="private-key-output" class="alert alert-info text-center" style="display:none;">
+                <strong>Decrypted Private Key:</strong>
+                <pre id="private-key"></pre>
+            </div>
+        </form>
+    </div>
+
+    <!-- JavaScript -->
+    <script src="https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js"></script>
+    <script src="{% static 'js/encryption.js' %}"></script>
+    <script>
+        async function decryptPrivateKeyCall() {
+            const password = document.getElementById('password').value;
+            const encryptedPrivateKey = document.getElementById('encrypted_private_key').value;
+            const decryptedPrivateKey = await decryptPrivateKey(encryptedPrivateKey, password);
+
+            alert(decryptedPrivateKey);
+        }
+    </script>
+</body>
+</html>

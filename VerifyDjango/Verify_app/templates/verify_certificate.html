@@ -69,7 +69,7 @@
                     <!-- Cryptographic Proof -->
                     <div class="crypto-proof" id="cryptoProof" style="display:none;">
                         <p><strong>Transaction Hash:</strong> <span id="transactionHash"></span></p>
-                        <p><button class="btn btn-warning" id="etherscanLink" target="_blank">View on Etherscan</button></p>
+                        <a href="{{ etherscan_url }}" class="btn btn-warning" id="etherscanLink" target="_blank">View on Etherscan</a>
                     </div>
 
                     <!-- Submit Button -->
@@ -88,7 +88,7 @@
         document.getElementById('verifyForm').onsubmit = async function(event) {
             event.preventDefault();
             const formData = new FormData(document.getElementById('verifyForm'));
-            const response = await fetch("{% url 'verify_signature' %}", {
+            const response = await fetch("{% url 'verify-signature' %}", {
                 method: 'POST',
                 body: formData
             });
