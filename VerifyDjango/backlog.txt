@@ -1,0 +1,184 @@
+- User to login using email instead of username / Authority login is a problem as it sets uname to entity name
+- Limit claim Tx data to 64chars and get only the transaction not the additional data
+- Fix the structure when returning from IFPS
+- IPFS URL standardization would be helpful
+- Selecting claimID on sign-certificate ensure that profiles can only access if they should be able to
+- Using ZK-rollups
+- Revocation list in smart contract (just incase)
+- double check sync between local enablers and claim IDs ensuring no possible mismatch
+- pin and unpin data
+
+KOTARO
+
+https://sepolia.etherscan.io/address/0xC4331f728306632F130E7C14e09d62b9ca0788fA
+
+# Connect to Infura Sepolia network
+    infura_url = settings.INFURA_TEST_URL
+    web3 = Web3(Web3.HTTPProvider(infura_url))
+    #web3 = Web3(Web3.HTTPProvider('http://localhost:8545'))
+
+
+    # Ensure connection
+    if web3.is_connected():
+        print("Connected to Sepolia")
+    else:
+        raise Exception("Failed to connect to Sepolia")
+
+    # Load the contract ABI
+    with open('build/contracts/Verify.json') as f:
+        contract_data = json.load(f)
+    contract_abi = contract_data['abi']
+
+    # Contract address and your account details
+    contract_address = settings.CONTRACT_ADDRESS
+    contract = web3.eth.contract(address=contract_address, abi=contract_abi)
+
+    # Your Ethereum account details
+    account = "0x57F6f1eEc2fFBd8EA9c21C469FEdf5DbA2e062Ca"
+    private_key = "09cbffebfe1497eac38e228ab10b4909eb4df293e09f5ce8b727c385daef2e62"  # Never share this
+
+
+    # Claim data
+    requester_address = "0x57F6f1eEc2fFBd8EA9c21C469FEdf5DbA2e062Ca"  # Replace with actual requester's address
+    authority_address = "0x57F6f1eEc2fFBd8EA9c21C469FEdf5DbA2e062Ca"  # Replace with actual authority's address
+    ipfs_hash = "0xhashtest0xhashtest0xhashtest1"  # Replace with actual IPFS hash
+
+    requester_address = Web3.to_checksum_address(requester_address)
+    authority_address = Web3.to_checksum_address(requester_address)
+
+    # Create the transaction
+    transaction = contract.functions.createClaim(
+        requester_address,
+        authority_address,
+        ipfs_hash
+    ).build_transaction({
+        'from': account,
+        'nonce': web3.eth.get_transaction_count(account),
+        'gas': 2000000,  # Estimate gas limit (adjust if necessary)
+        'gasPrice': web3.to_wei('20', 'gwei'),  # Set gas price
+        'value': 0
+    })
+
+    # Sign the transaction
+    signed_txn = web3.eth.account.sign_transaction(transaction, private_key)
+
+    # Send the transaction
+    txn_hash = web3.eth.send_raw_transaction(signed_txn.rawTransaction)
+
+    # Wait for transaction receipt
+    txn_receipt = web3.eth.wait_for_transaction_receipt(txn_hash)
+    print(f"Transaction hash: {txn_hash.hex()}")
+    print(f"Transaction receipt: {txn_receipt}")
+
+
+
+            <!-- Social and Contact Section -->
+        <section id="social" class="social">
+            <div class="container">
+                <div class="row">
+                    <div class="social-wrapper">
+                        <div class="col-md-6">
+                            <div class="social-icon">
+                                <a href="#"><i class="fa fa-facebook"></i></a>
+                                <a href="#"><i class="fa fa-twitter"></i></a>
+                                <a href="#"><i class="fa fa-linkedin"></i></a>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="social-contact">
+                                <a href="#"><i class="fa fa-phone"></i>+011 54925849</a>
+                                <a href="mailto:contact@yourdapp.com"><i class="fa fa-envelope"></i>contact@yourdapp.com</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+
+
+def verify_signature(request):
+    """
+    Verify the signature of the uploaded certificate using the claim ID and authority address.
+    Provide cryptographic proof by retrieving the transaction hash from the database.
+    """
+    if request.method == 'POST':
+        uploaded_file = request.FILES.get('uploaded_certificate')
+
+        if not uploaded_file:
+            return JsonResponse({'error': 'No certificate provided'}, status=400)
+
+        # Read the uploaded PDF file
+        pdf_file = uploaded_file.read()
+
+        # Extract claim ID and authority address from the certificate metadata
+        pdf_reader = PdfReader(BytesIO(pdf_file))
+        metadata = pdf_reader.metadata
+
+        try:
+            claim_id = int(metadata.get('/ClaimID'))
+            authority_address = metadata.get('/AuthorityAddress')
+        except Exception as e:
+            return JsonResponse({
+                'status': 'Error: Certificate metadata is invalid or incomplete',
+                'verified': False,
+                'verified_by': 'N/A'
+            })
+
+        # Locate the corresponding certificate in the database
+        try:
+            cert_claim = Claim.objects.get(claim_id=claim_id)
+            authority = CustomUser.objects.get(address=authority_address)
+            certificate = Certificate.objects.get(claim=cert_claim, authority=authority)
+        except Certificate.DoesNotExist:
+            return JsonResponse({
+                'status': 'Error: No certificate found with the provided metadata',
+                'verified': False,
+                'verified_by': 'N/A'
+            })
+
+        # Hash the file to compare it to the on-chain data
+        file_hash = hashlib.sha256(pdf_file).hexdigest()
+
+        web3 = Web3(Web3.HTTPProvider('http://localhost:8545'))
+
+        # Load the contract
+        with open('build/contracts/Verify.json') as f:
+            contract_data = json.load(f)
+            contract_abi = contract_data['abi']
+
+        contract_address = settings.CONTRACT_ADDRESS
+        contract = web3.eth.contract(address=contract_address, abi=contract_abi)
+
+        # Get certificate signature from the smart contract
+        signature = contract.functions.getCertSignature(claim_id).call()
+
+        # Verify the signature
+        message = encode_defunct(hexstr=file_hash)
+        recovered_address = web3.eth.account.recover_message(
+            message,
+            signature=signature
+        )
+
+        # Retrieve transaction hash from the database
+        txn_hash = certificate.txn_hash
+
+        # Compare hashes and verify the signature
+        if recovered_address.lower() == certificate.authority.address.lower():
+            return JsonResponse({
+                'status': 'success',
+                'verified': True,
+                'verified_by': certificate.authority.institution_name,
+                'transaction_hash': txn_hash,  # Return transaction hash from the database
+                'etherscan_url': f"https://etherscan.io/tx/{txn_hash}"  # Provide a link to view on Etherscan
+            })
+        else:
+            return JsonResponse({
+                'status': 'success',
+                'verified': False,
+                'verified_by': certificate.authority.address,
+                'transaction_hash': txn_hash,
+                'etherscan_url': f"https://etherscan.io/tx/{txn_hash}"
+            })
+
+    return render(request, 'verify_certificate.html')
