@@ -1,1 +1,1 @@
-web gunicorn verify.wsgi:application --log-file -
+web: gunicorn VerifyDjango.wsgi --log-file -

@@ -64,6 +64,9 @@ DATABASES = {
     }
 }
 
+DATABASES['default'] = dj_database_url.config(conn_max_age=600, ssl_require=True)
+django_heroku.settings(locals())
+
 AUTH_USER_MODEL = 'Verify_app.CustomUser'
 AUTH_PASSWORD_VALIDATORS = [
     {
