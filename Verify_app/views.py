@@ -377,7 +377,7 @@ def sign_certificate_view(request):
             ipfs_hash
         ).build_transaction({
             'chainId': 1337,
-            'gas': gas_estimate + 50000,
+            'gas': gas_estimate + 80000,
             'gasPrice': web3.eth.gas_price,
             'nonce': web3.eth.get_transaction_count(request.user.address),
             'value': 0
