@@ -68,6 +68,7 @@ def index(request):
             'guest': True
         })
 
+@csrf_exempt
 def login_view(request):
     if request.method == "POST":
         username = request.POST.get('username')
@@ -86,6 +87,7 @@ def logout_view(request):
     logout(request)
     return redirect('login')
 
+@csrf_exempt
 def register(request):
     if request.method == 'POST':
         form = UserRegisterForm(request.POST)
@@ -134,6 +136,81 @@ def transaction_confirmation(request):
     txn_hash = request.GET.get('txn_hash')
     return render(request, 'transaction_confirmation.html', {'txn_hash': txn_hash})
 
+
+@csrf_exempt
+def tatum_webhook_create(request):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            # Extract the event from the webhook data
+            event = data.get('events', [])[0]  # Assuming there's at least one event
+
+            # Extract the transaction hash
+            tx_hash = event.get('txId')
+
+            # Extract the claim ID from topic_1
+            topic_1 = event.get('topic_1')
+            claim_id = int(topic_1, 16)  # Convert hex string to integer
+
+            # Locate the corresponding Claim in your database
+            try:
+                claim = Claim.objects.get(transaction_hash=tx_hash)
+                if not claim.status == 'pending':
+                    raise Exception(f"Excess notification call from Tatum: {claim_id, tx_hash}")
+            except Claim.DoesNotExist:
+                print(f"No Claim found with transaction hash: {tx_hash}")
+                return
+
+            # Update the Claim with the claim_id and new status
+            claim.claim_id = claim_id
+            claim.tx_status = 'pending signature'
+            claim.save()
+
+            print(f"Claim {claim.id} updated with claim_id {claim_id} and status 'pending signature'.")
+
+        except Exception as e:
+            print(f"Failed to process webhook: {str(e)}")
+            return JsonResponse({'error': 'Failed to process notification.'}, status=400)
+
+
+def tatum_webhook_sign(request):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            # Extract the event from the webhook data
+            event = data.get('events', [])[0]  # Assuming there's at least one event
+
+            # Extract the transaction hash
+            tx_hash = event.get('txId')
+
+            # Extract the claim ID from topic_1
+            topic_1 = event.get('topic_1')
+            claim_id = int(topic_1, 16)  # Convert hex string to integer
+
+            # Locate the corresponding Claim in your database
+            try:
+                claim = Claim.objects.get(claim_id=claim_id, transaction_hash=tx_hash)
+                if not claim.tx_status == 'pending signature':
+                    raise Exception(f"Unexpected notification call from Tatum: {claim_id, tx_hash}")
+            except Claim.DoesNotExist:
+                print(f"No Claim found with claim_id: {claim_id} and transaction hash: {tx_hash}")
+                return JsonResponse({'error': 'Claim not found'}, status=404)
+
+            # Update the Claim with the new status 'signed'
+            claim.tx_status = 'signed'
+            claim.signed = True  # Assuming you have a 'signed' field in your model
+            claim.save()
+
+            print(f"Claim {claim.id} updated with status 'signed'.")
+
+            return JsonResponse({'message': 'Claim updated successfully'}, status=200)
+
+        except Exception as e:
+            print(f"Failed to process webhook: {str(e)}")
+            return JsonResponse({'error': 'Failed to process notification.'}, status=400)
+
+
+
 @login_required
 @csrf_exempt
 def create_claim(request):
@@ -147,34 +224,34 @@ def create_claim(request):
                 data = json.loads(data)
                 txn_hash = web3.eth.send_raw_transaction(data['signedTransaction'])
 
-                # Wait for transaction to be mined
-                receipt = web3.eth.wait_for_transaction_receipt(txn_hash)
 
-                # Extract claim ID from event log in receipt
-                claim_id = extract_claim_id_from_receipt(receipt)
+                # Wait for transaction to be mined
+                #txn_hash = web3.eth.send_raw_transaction(txn_hash)
 
                 # Save the claim to the database with claim ID from receipt
-                save_claim_to_django_DB(request, txn_hash.hex(), claim_id)
+                save_claim_to_django_DB(request, txn_hash.hex(), claim_id=0)
 
-                return JsonResponse({'txn_hash': txn_hash.hex(), 'claim_id': claim_id})
+                return JsonResponse({'txn_hash': txn_hash.hex()})
             except Exception as e:
                 return JsonResponse({'error': str(e)}, status=500)
 
         elif 'txnHash' in data:
             # MetaMask User Flow: Transaction already sent, just log the transaction hash
             data = json.loads(data)
-            txn_hash = data['txnHash']
+            txn_hash = data['txnHash']['txnHash']
+
+            #subscribe_to_tatum(txn_hash)
 
             # Wait for transaction to be mined
-            receipt = web3.eth.wait_for_transaction_receipt(txn_hash)
+            #receipt = web3.eth.send_raw_transaction(txn_hash)
 
             # Extract claim ID from event log in receipt
-            claim_id = extract_claim_id_from_receipt(receipt)
+            #claim_id = extract_claim_id_from_receipt(receipt)
 
             # Save the claim to the database with claim ID from receipt
-            save_claim_to_django_DB(request, txn_hash, claim_id)
+            save_claim_to_django_DB(request, txn_hash, claim_id=0)
 
-            return JsonResponse({'txn_hash': txn_hash, 'claim_id': claim_id})
+            return JsonResponse({'txn_hash': txn_hash})
 
         else:
             # Handle claim creation and transaction preparation
@@ -218,11 +295,11 @@ def create_claim(request):
                 _authority=authority_address,
                 _ipfsHash=IPFS_hash
             ).build_transaction({
-                'chainId': 1337,  # Ganache
+                'chainId': settings.CHAIN_ID,
                 'gas': gas_estimate,
                 'gasPrice': web3.eth.gas_price,
                 'nonce': web3.eth.get_transaction_count(wallet_address),
-                'value': 0 # Ensure no ETH is sent this cost me too many hours to discover... SC calls dont' work without it
+                'value': 0, # Ensure no ETH is sent this cost me too many hours to discover... SC calls dont' work without it
             })
 
             # Save the IPFS hash in the session for later use
@@ -303,6 +380,7 @@ def generate_certificate_hash(certificate_bytes):
     return hashlib.sha256(certificate_bytes).hexdigest()
 
 
+@csrf_exempt
 def sign_certificate_view(request):
     """Handle the certificate signing, generate PDF and certificate hash."""
     if request.method == 'POST':
@@ -342,11 +420,9 @@ def sign_certificate_view(request):
 
         # Generate a certificate hash
         certificate_hash = generate_certificate_hash(embedded_certificate_pdf_bytes)
-        message = encode_defunct(hexstr=certificate_hash)
 
         # Store and distribute key fragments
         store_and_distribute_key_fragments(shares, claim.requester, claim.authority.address, ipfs_hash)
-
 
         # Prepare the transaction data for blockchain signing
         web3 = Web3(Web3.HTTPProvider(settings.WEB3_URL))
@@ -359,40 +435,41 @@ def sign_certificate_view(request):
         user_profile = request.user
         wallet_address = Web3.to_checksum_address(user_profile.address)
 
-        user_profile = request.user
-        wallet_address = Web3.to_checksum_address(user_profile.address)
-
-        # Estimate gas for the transaction
+        placeholder_signature = "0x" + "0" * 130  # 65 bytes in hex (130 characters)
+        # Build the transaction data, including gas estimate
         gas_estimate = verify_contract_instance.functions.signClaim(
             int(claim_id),
-            "MEUCIQC03/JJpUtxqeju5oVFP1QVsVNOA4Oet7HCqEAqhPBFuMchAiEAUZtCPXFfjIUnKCLvrACVgR723/WuMdZxepsy00tItmzP",  # Placeholder for the signature, to be replaced in the frontend
+            placeholder_signature,
             ipfs_hash
         ).estimate_gas({
-            'from': wallet_address
+            'from': wallet_address,
+            'value': 0
         })
 
         transaction = verify_contract_instance.functions.signClaim(
             int(claim_id),
-            "0x",  # Placeholder for the signature, to be replaced in the frontend
+            placeholder_signature,
             ipfs_hash
         ).build_transaction({
-            'chainId': 1337,
-            'gas': gas_estimate + 80000,
+            'chainId': settings.CHAIN_ID,
+            'gas': gas_estimate,
             'gasPrice': web3.eth.gas_price,
-            'nonce': web3.eth.get_transaction_count(request.user.address),
+            'nonce': web3.eth.get_transaction_count(wallet_address),
             'value': 0
         })
 
-        # Return the certificate data, certificate hash, CID, and transaction for signing in the frontend
+        # Return the transaction data and other necessary data to the frontend
         return JsonResponse({
             "transaction": json.dumps(transaction),
-            "certificate_hash": Web3.to_hex(message.body),
+            "certificate_hash": certificate_hash,
             "certificate_pdf_base64": base64.b64encode(embedded_certificate_pdf_bytes).decode('utf-8'),
             "selected_claim_id": claim_id,
-            "contract_abi": contract_abi,
+            "ipfs_cid": ipfs_hash,
             "contract_address": contract_address,
-            "ipfs_cid": ipfs_hash,  # Return the CID to the frontend,
-            "web3_url": settings.WEB3_URL
+            "contract_abi": contract_abi,
+            "encrypted_private_key": user_profile.encrypted_private_key if not user_profile.is_web3_user else None,
+            'is_web3_user': user_profile.is_web3_user,
+            "certificate_data": json.dumps(claim_data),
         })
 
     # Render list of unsigned claims
@@ -407,40 +484,29 @@ def sign_certificate_view(request):
     return render(request, 'sign_certificate.html', context)
 
 
+
 @csrf_exempt
 @login_required
 def store_signed_certificate(request):
     """Store the signed certificate, save a copy for user and authority, and embed claim ID and authority address."""
     if request.method == 'POST':
         data = json.loads(request.body)
-        signature = data.get('signature')
         ipfs_hash = data.get('expected_cid')  # CID passed from frontend
         txn_hash = data.get('txn_hash')
         claim_id = data.get('selected_claim_id')
 
-        claim = Claim.objects.get(claim_id=claim_id)
-        claimant = claim.requester
-        authority = claim.authority
-
-        # Save certificate for user along with IPFS hash
-        user_certificate = Certificate.objects.create(
-            user=claimant,
-            authority=authority,
-            claim=claim,
-            ipfs_hash=ipfs_hash,
-            signature=signature,
-            txn_hash=txn_hash,
-        )
-
-        # Mark the claim as signed
-        claim.signed = True
-        claim.save()
+        try:
+            claim = Claim.objects.get(claim_id=claim_id, authority=request.user)
+            claim.transaction_hash = txn_hash
+            claim.ipfs_hash = ipfs_hash
+            claim.status = 'Mining Authority Decision'
+            claim.save()
+        except Claim.DoesNotExist:
+            return JsonResponse({'error': 'Claim not found.'}, status=404)
 
         return JsonResponse({
             'status': 'success',
             'message': 'Certificate signed, encrypted, and uploaded to IPFS successfully.',
-            'certificate_id': user_certificate.id,
-            'ipfs_hash': ipfs_hash
         })
 
     return JsonResponse({'status': 'error', 'message': 'Invalid request method.'}, status=405)
@@ -512,7 +578,7 @@ def verify_signature(request):
             on_chain_signature = contract.functions.getCertSignature(claim_id).call()
 
             # Verify the on-chain signature with the recovered address
-            message = encode_defunct(hexstr=file_hash)
+            message = encode_defunct(text=file_hash)
             recovered_address = web3.eth.account.recover_message(message, signature=on_chain_signature)
 
             # Fetch the transaction hash directly from the blockchain logs
@@ -560,57 +626,49 @@ def verify_signature(request):
 
 
 
+from .web3_utils import process_claim_transaction
+from django.utils import timezone
 
 def user_profile_view(request):
     user = request.user
 
     if user.is_authenticated:
-        user_address = user.address  # Assuming you store user's Ethereum address in CustomUser model
+        # Get all claims associated with the user
+        user_claims = Claim.objects.filter(requester=user)
 
-        # Connect to Ethereum blockchain
-        web3 = Web3(Web3.HTTPProvider(settings.WEB3_URL))
+        # Process claims older than 30 minutes that are still pending
+        pending_claims = user_claims.filter(signed=False)
 
-        # Load the contract
-        with open('build/contracts/Verify.json') as f:
-            contract_data = json.load(f)
-            contract_abi = contract_data['abi']
+        for claim in pending_claims:
+            if claim.transaction_hash:
+                try:
+                    process_claim_transaction(claim.transaction_hash)
+                except Exception as e:
+                    # Handle or log the exception
+                    print(f"Error processing claim {claim.id}: {e}")
+                    # Optionally, update the claim's tx_status to 'error' or similar
+                    claim.tx_status = 'error'
+                    claim.save()
 
-        contract_address = settings.CONTRACT_ADDRESS
-        verify_contract_instance = web3.eth.contract(address=contract_address, abi=contract_abi)
-
-        # Call the getClaimsByAddress function
-        claim_ids = verify_contract_instance.functions.getClaimsByAddress(user_address).call()
+        # Refresh the user_claims queryset to get updated statuses
+        user_claims = Claim.objects.filter(requester=user)
 
         claims = []
-        for claim_id in claim_ids:
-            claim = verify_contract_instance.functions.getClaim(claim_id).call()
-            claim_created_at = 'Error'
-            try:
-                claim_db = Claim.objects.get(claim_id=claim_id)
-                claim_created_at = claim_db.created_at
-            except Exception as e:
-                # LOG #
-                pass
-
-            # Retrieve authority address from the claim
-            authority_address = claim[1]
-
-            # Use the function to resolve the authority name
-            authority_name = get_authority_name_from_address(authority_address)
+        for claim in user_claims:
+            # Handle authority name
+            authority_name = claim.authority.username if claim.authority else 'Unknown'
 
             claims.append({
-                'claim_id': claim_id,
-                'requester': claim[0],
-                'authority': authority_name,  # Use the resolved authority name
-                'ipfs_hash': claim[2],
-                'created_at': claim_created_at,
-                'signed': claim[3],
+                'claim_id': claim.claim_id,
+                'authority': authority_name,
+                'created_at': claim.created_at,
+                'tx_status': claim.tx_status,
+                'signed': claim.signed,
             })
 
         return render(request, 'user_profile.html', {'claims': claims})
     else:
         return render(request, 'user_profile.html', {'error': 'User not authenticated'})
-
 
 def authority_profile_view(request):
     user = request.user

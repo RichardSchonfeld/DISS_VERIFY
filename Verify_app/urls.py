@@ -25,4 +25,6 @@ urlpatterns = [
     path('authority-profile/', authority_profile_view, name="authority-profile"),
     path('show-private-key/', decrypt_private_key_view, name="show-private-key"),
     path('claim/<int:claim_id>/', claim_detail_view, name='claim-detail'),
+    path('tatum-webhook-1/', tatum_webhook_create, name='tatum_webhook'),
+    path('tatum-webhook-2/', tatum_webhook_sign, name='tatum_webhook'),
 ]

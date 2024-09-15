@@ -40,7 +40,36 @@
 
         <!-- Certificate container, hidden by default -->
         <div id="certificate-container" style="display:none;">
-            <pre id="certificate-data" style="display: none;"></pre>
+            <pre id="certificate-data"></pre>
+            <h2>Certificate Details</h2>
+                <table class="table table-striped">
+                    <tbody>
+                        <tr>
+                            <th>Full Name:</th>
+                            <td id="full-name"></td>
+                        </tr>
+                        <tr>
+                            <th>Student Number:</th>
+                            <td id="student-number"></td>
+                        </tr>
+                        <tr>
+                            <th>Year of Graduation:</th>
+                            <td id="year-of-graduation"></td>
+                        </tr>
+                        <tr>
+                            <th>Course Details:</th>
+                            <td id="course-details"></td>
+                        </tr>
+                        <tr>
+                            <th>Issuer:</th>
+                            <td id="issuer"></td>
+                        </tr>
+                        <tr>
+                            <th>Date of Issue:</th>
+                            <td id="date-of-issue"></td>
+                        </tr>
+                    </tbody>
+                </table>
 
             <!-- PDF preview section -->
             <h2>Certificate PDF Preview</h2>
@@ -73,6 +102,11 @@
 
             if (response.ok) {
                 const data = await response.json();
+
+                displayCertificateDetails(data);
+
+                // Show the certificate container and PDF preview
+                document.getElementById('certificate-container').style.display = 'block';
 
                 // Display the certificate data
                 document.getElementById('certificate-data').textContent = JSON.stringify(data.certificate_data, null, 2);
@@ -111,15 +145,36 @@
                             // Sign the certificate hash using MetaMask
                             const signature = await web3.eth.personal.sign(certificateHash, account);
 
-                            // Send the transaction to the contract
-                            const txnHash = await contract.methods.signClaim(selectedClaimId, signature, expectedIPFSCid).send({
-                                from: account,
-                                gas: transactionData.gas,
-                                gasPrice: transactionData.gasPrice
-                            });
+                            const recoveredAddress = web3.eth.accounts.recover(certificateHash, signature);
+                            console.log("RECOVERED ADDR");
+                            console.log(recoveredAddress);
+                            console.log(certificateHash);
+                            console.log(signature);
 
-                            // Submit the signed certificate and transaction hash to the backend
-                            await submitSignedCertificate(data.certificate_pdf_base64, signature, selectedClaimId, txnHash.transactionHash, expectedIPFSCid);
+                           const txnParams = {
+                                from: account,
+                                to: transactionData.to,
+                                gas: transactionData.gas,
+                                gasPrice: transactionData.gasPrice,
+                                data: contract.methods.signClaim(selectedClaimId, signature, expectedIPFSCid).encodeABI(),
+                                value: transactionData.value || 0
+                           };
+
+                           console.log(txnParams);
+
+                            // Send the transaction and handle it asynchronously
+                            web3.eth.sendTransaction(txnParams)
+                                .on('transactionHash', async function (txnHash) {
+                                    // Send the transaction hash and signed certificate to the backend
+                                    await submitSignedCertificate(data.certificate_pdf_base64, signature, selectedClaimId, txnHash, expectedIPFSCid);
+                                    alert('Transaction submitted! Transaction hash: ' + txnHash);
+                                    //window.location.href = '/';
+                                })
+                                .on('error', function (error) {
+                                    console.error('Transaction failed:', error);
+                                    alert('Error occurred during transaction submission.');
+                                });
+                            //await submitSignedCertificate(data.certificate_pdf_base64, signature, selectedClaimId, txnHash.transactionHash, expectedIPFSCid);
 
                         } else {
                             // Non-Web3 user flow (local signing)
@@ -205,6 +260,16 @@
             const byteNumbers = new Array(byteCharacters.length).fill(null).map((_, i) => byteCharacters.charCodeAt(i));
             const byteArray = new Uint8Array(byteNumbers);
             return new Blob([byteArray], { type: mimeType });
+        }
+
+        function displayCertificateDetails(data) {
+            const certificateDetails = JSON.parse(data.certificate_data);  // Assuming it's in JSON format
+            document.getElementById('full-name').textContent = certificateDetails.full_name;
+            document.getElementById('student-number').textContent = certificateDetails.student_number;
+            document.getElementById('year-of-graduation').textContent = certificateDetails.year_of_graduation;
+            document.getElementById('course-details').textContent = certificateDetails.course_details;
+            document.getElementById('issuer').textContent = certificateDetails.issuer;
+            document.getElementById('date-of-issue').textContent = certificateDetails.date_of_issue;
         }
     </script>
 </body>
