@@ -1,7 +1,10 @@
+import os
+
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
 from django.conf import settings
+from .encryption_utils import encrypt_shamir_key
 from .models import CustomUser, KeyFragment, Claim
 
 from PyPDF2 import PdfWriter, PdfReader
@@ -44,6 +47,11 @@ def store_and_distribute_key_fragments(shares, user_profile, authority_address, 
     authority_share = shares[2]
 
     try:
+        # Symmetric Encryption
+        claimant_share = encrypt_shamir_key(claimant_share)
+        server_share = encrypt_shamir_key(server_share)
+        authority_share = encrypt_shamir_key(authority_share)
+
         # Storing
         store_key_fragment(user_profile, claimant_share, IPFS_hash)
 
@@ -53,6 +61,7 @@ def store_and_distribute_key_fragments(shares, user_profile, authority_address, 
         authority_user = get_user_by_address(authority_address)
         store_key_fragment(authority_user, authority_share, IPFS_hash)
     except Exception as e:
+
         raise Exception(f'Failed to distribute Shamir keys: {str(e)}')
 
 

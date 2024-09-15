@@ -100,15 +100,18 @@ class KeyFragment(models.Model):
 
 
 class Claim(models.Model):
-    claim_id = models.IntegerField(blank=False, null=False)
+    claim_id = models.IntegerField(blank=True, null=False)
     requester = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='claims')
     authority = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='authorities')
     ipfs_hash = models.CharField(max_length=255)
-    transaction_hash = models.CharField(max_length=1500)
     created_at = models.DateTimeField(auto_now_add=True)
     signed = models.BooleanField(default=False)
+    transaction_hash = models.CharField(max_length=255, null=True, blank=True)  # Transaction hash
+    tx_status = models.CharField(max_length=30, default='pending')  # Status: pending, confirmed, failed
+    tx_timestamp = models.DateTimeField(null=True, blank=True)
 
-    def __str__(self):
+
+def __str__(self):
         return f'Claim {self.id} by {self.requester}'
 
 

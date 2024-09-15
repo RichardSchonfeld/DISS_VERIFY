@@ -2,8 +2,9 @@ import requests
 import ast
 
 from django.conf import settings
+from django.http import JsonResponse
 
-from .encryption_utils import decrypt_with_shares, decrypt_with_shares_file
+from .encryption_utils import decrypt_with_shares, decrypt_with_shares_file, encrypt_shamir_key, decrypt_shamir_key
 from .forms import get_user_by_address
 from .models import KeyFragment
 
@@ -125,7 +126,7 @@ def get_decrypted_data_from_ipfs(ipfs_hash, user):
         return None  # If fragments are missing, return None or handle accordingly
 
     # Combine fragments to decrypt
-    shares = [ast.literal_eval(user_fragment.fragment), ast.literal_eval(server_fragment.fragment)]
+    shares = [decrypt_shamir_key(user_fragment.fragment), decrypt_shamir_key(server_fragment.fragment)]
 
     # Decrypt the data using the provided shares
     decrypted_data = decrypt_with_shares(encrypted_data, shares)
@@ -162,10 +163,10 @@ def get_decrypted_data_from_ipfs_file(ipfs_hash, user):
         server_fragment = KeyFragment.objects.filter(user=server_user, ipfs_hash=ipfs_hash).first()
 
         if not user_fragment or not server_fragment:
-            return None  # If fragments are missing, return None or handle accordingly
+            return JsonResponse({'error': 'Missing key fragments.'}, status=404)
 
         # 4. Combine the user's fragment and the server's fragment to decrypt the data
-        shares = [ast.literal_eval(user_fragment.fragment), ast.literal_eval(server_fragment.fragment)]
+        shares = [decrypt_shamir_key(user_fragment.fragment), decrypt_shamir_key(server_fragment.fragment)]
 
         # 5. Decrypt the data using the provided shares
         decrypted_data = decrypt_with_shares_file(encrypted_data, shares)

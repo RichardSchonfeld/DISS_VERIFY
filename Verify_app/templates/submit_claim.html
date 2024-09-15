@@ -96,8 +96,20 @@
                         value: transactionData.value
                     };
 
-                    const txnHash = await web3.eth.sendTransaction(txnParams);
-                    await submitSignedTransaction(txnHash.transactionHash, claimData);
+                    // Send the transaction via MetaMask and get the transaction hash immediately
+                    web3.eth.sendTransaction(txnParams)
+                        .on('transactionHash', async function(txnHash) {
+                            // Send the transaction hash to the backend
+                            await submitSignedTransaction({ txnHash: txnHash }, claimData);
+                            alert('Transaction submitted! Transaction hash: ' + txnHash);
+                            window.location.href = '/';
+                        })
+                        .on('error', function(error) {
+                            console.error('Transaction failed:', error);
+                            alert('Error occurred during transaction submission.');
+                        });
+
+                    // No need to wait for the transaction receipt here
                 } else {
                     const encryptedPrivateKey = document.getElementById('encrypted_private_key').value;
                     const password = document.getElementById('password').value;

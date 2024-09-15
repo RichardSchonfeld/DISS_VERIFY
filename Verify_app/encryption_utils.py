@@ -1,7 +1,10 @@
+import ast
 import base64
 import os
 import json
+import pickle
 
+from django.conf import settings
 from django.contrib.auth.hashers import PBKDF2PasswordHasher
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.hazmat.primitives import hashes
@@ -82,6 +85,79 @@ def decrypt_private_key(encrypted_private_key, password):
         return None
     except Exception as e:
         print(f"An error occurred: {e}")
+        return None
+
+
+def encrypt_shamir_key(claimant_share):
+    """
+    Encrypt the Shamir key fragment tuple and return the ciphertext (IV prepended to ciphertext).
+
+    Args:
+        claimant_share (tuple): The tuple containing the Shamir key fragment (index, fragment).
+
+    Returns:
+        str: Base64-encoded ciphertext with IV prepended.
+    """
+
+    # Retrieve the encryption key from settings
+    encryption_key = settings.SHAMIR_ENC_SYMM_KEY.encode('utf-8')
+
+    # Generate a random initialization vector (IV) for encryption
+    iv = os.urandom(16)  # 16 bytes IV for AES-256 CFB mode
+
+    # Serialize the tuple (convert the tuple to bytes) using pickle
+    serialized_share = pickle.dumps(claimant_share)
+
+    # Create the AES cipher object
+    cipher = Cipher(algorithms.AES(encryption_key), modes.CFB(iv), backend=default_backend())
+
+    # Encrypt the serialized tuple
+    encryptor = cipher.encryptor()
+    encrypted_shamir_key = encryptor.update(serialized_share) + encryptor.finalize()
+
+    # Prepend the IV to the ciphertext
+    ciphertext_with_iv = iv + encrypted_shamir_key
+
+    # Return the base64-encoded ciphertext (with IV prepended)
+    return base64.b64encode(ciphertext_with_iv).decode('utf-8')
+
+
+def decrypt_shamir_key(ciphertext):
+    """
+    Decrypt the ciphertext and return the Shamir key fragment tuple.
+
+    Args:
+        ciphertext (str): Base64-encoded ciphertext with IV prepended.
+
+    Returns:
+        tuple: The decrypted Shamir key fragment tuple (index, fragment), or None if decryption fails.
+    """
+
+    try:
+        # Retrieve the encryption key from settings
+        encryption_key = settings.SHAMIR_ENC_SYMM_KEY.encode('utf-8')
+
+        # Decode the base64-encoded ciphertext
+        ciphertext_with_iv = base64.b64decode(ciphertext)
+
+        # Extract the IV (first 16 bytes) and the actual ciphertext
+        iv = ciphertext_with_iv[:16]
+        encrypted_shamir_key = ciphertext_with_iv[16:]
+
+        # Create the AES cipher object for decryption
+        cipher = Cipher(algorithms.AES(encryption_key), modes.CFB(iv), backend=default_backend())
+
+        # Decrypt the Shamir key fragment
+        decryptor = cipher.decryptor()
+        decrypted_shamir_key = decryptor.update(encrypted_shamir_key) + decryptor.finalize()
+
+        # Deserialize the decrypted data back into a tuple
+        claimant_share = pickle.loads(decrypted_shamir_key)
+
+        return claimant_share  # Return the decrypted tuple (index, fragment)
+
+    except Exception as e:
+        print(f"Decryption failed: {str(e)}")
         return None
 
 
