@@ -200,3 +200,20 @@ def parse_json_decrypted_ipfs_data(decrypted_data):
         "date_of_issue": "2024-08-15"
     }
     return certificate_data
+
+
+def unpin_from_pinata(ipfs_hash):
+    url = f"https://api.pinata.cloud/pinning/unpin/{ipfs_hash}"
+
+    headers = {
+        "Authorization": f"Bearer {settings.PINATA_JWT}"
+    }
+
+    response = requests.delete(url, headers=headers)
+
+    if response.status_code == 200:
+        print("Successfully unpinned from Pinata.")
+        return True
+    else:
+        print(f"Failed to unpin. Status code: {response.status_code}, Response: {response.text}")
+        return False

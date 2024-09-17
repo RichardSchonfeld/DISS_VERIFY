@@ -13,6 +13,7 @@ import datetime
 import json
 import os
 import base64
+import hmac
 
 from django.contrib.auth import authenticate, login, logout
 from django.http import JsonResponse, HttpResponseRedirect, HttpResponse
@@ -30,7 +31,7 @@ from .models import Claim, CustomUser, Certificate, KeyFragment
 from .forms import UserRegisterForm, store_key_fragment, get_user_by_address, get_authority_name_from_address, \
     save_claim_to_django_DB, store_and_distribute_key_fragments, embed_metadata
 from .ipfs_functions import parse_json_decrypted_ipfs_data, get_decrypted_data_from_ipfs, \
-    upload_ipfs_file, get_decrypted_data_from_ipfs_file, upload_to_ipfs, predetermine_ipfs_hash
+    upload_ipfs_file, get_decrypted_data_from_ipfs_file, upload_to_ipfs, predetermine_ipfs_hash, unpin_from_pinata
 from .eth_utils import create_claim, sign_claim, get_claim, fund_account, extract_claim_id_from_receipt
 from .encryption_utils import encrypt_private_key, derive_key, decrypt_private_key, encrypt_and_split, \
     decrypt_with_shares, encrypt_with_public_key, encrypt_and_split_file
@@ -74,6 +75,8 @@ def login_view(request):
         username = request.POST.get('username')
         password = request.POST.get('password')
         user = authenticate(request, username=username, password=password)
+        if user.is_web3_user:
+             return HttpResponse("Cannot login as Web3 user using this form", status=400)
         if user is not None:
             login(request, user)
             return HttpResponseRedirect(reverse('home'))
@@ -137,10 +140,33 @@ def transaction_confirmation(request):
     return render(request, 'transaction_confirmation.html', {'txn_hash': txn_hash})
 
 
+def verify_signature_tatum(payload, header_signature, secret):
+    # Recompute HMAC SHA512 signature using the raw payload and the secret key
+    computed_hmac = hmac.new(
+        secret.encode(),  # Secret key as bytes
+        payload,  # Request payload as bytes
+        hashlib.sha512  # SHA512 hash
+    ).digest()
+
+    # Tatum signature comes base64 encoded, so decode to compare
+    computed_signature = base64.b64encode(computed_hmac).decode()
+
+    return hmac.compare_digest(computed_signature, header_signature)
+
+
 @csrf_exempt
 def tatum_webhook_create(request):
     if request.method == 'POST':
         try:
+            signature = request.headers.get("X-Payload-Hash")
+            payload = request.body
+
+            if not signature:
+                return JsonResponse({"error": "Missing signature"}, status=400)
+
+            if not verify_signature_tatum(payload, signature, settings.TATUM_SECRET):
+                return JsonResponse({"error": "Invalid signature"}, status=403)
+
             data = json.loads(request.body)
             # Extract the event from the webhook data
             event = data.get('events', [])[0]  # Assuming there's at least one event
@@ -155,7 +181,7 @@ def tatum_webhook_create(request):
             # Locate the corresponding Claim in your database
             try:
                 claim = Claim.objects.get(transaction_hash=tx_hash)
-                if not claim.status == 'pending':
+                if not claim.tx_status == 'pending':
                     raise Exception(f"Excess notification call from Tatum: {claim_id, tx_hash}")
             except Claim.DoesNotExist:
                 print(f"No Claim found with transaction hash: {tx_hash}")
@@ -176,6 +202,15 @@ def tatum_webhook_create(request):
 def tatum_webhook_sign(request):
     if request.method == 'POST':
         try:
+            signature = request.headers.get("X-Payload-Hash")
+            payload = request.body
+
+            if not signature:
+                return JsonResponse({"error": "Missing signature"}, status=400)
+
+            if not verify_signature_tatum(payload, signature, settings.TATUM_SECRET):
+                return JsonResponse({"error": "Invalid signature"}, status=403)
+
             data = json.loads(request.body)
             # Extract the event from the webhook data
             event = data.get('events', [])[0]  # Assuming there's at least one event
@@ -196,7 +231,9 @@ def tatum_webhook_sign(request):
                 print(f"No Claim found with claim_id: {claim_id} and transaction hash: {tx_hash}")
                 return JsonResponse({'error': 'Claim not found'}, status=404)
 
-            # Update the Claim with the new status 'signed'
+            # Update the Claim with the new status 'signed' and remove old IPFS data
+            unpin_from_pinata(claim.ipfs_hash_dep)
+
             claim.tx_status = 'signed'
             claim.signed = True  # Assuming you have a 'signed' field in your model
             claim.save()
@@ -417,6 +454,9 @@ def sign_certificate_view(request):
 
         # Upload the encrypted certificate to IPFS
         ipfs_hash = upload_ipfs_file(encrypted_data)
+
+        # Update ipfs_hash_dep on DB for deletion later
+        Claim.objects.get(claim_id=claim_id).ipfs_hash_dep = ipfs_hash
 
         # Generate a certificate hash
         certificate_hash = generate_certificate_hash(embedded_certificate_pdf_bytes)
