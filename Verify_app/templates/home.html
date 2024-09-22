@@ -38,9 +38,15 @@
                         <a class="nav-link" href="#testimonials">Testimonials</a>
                     </li>
                     {% if user.is_authenticated %}
-                        <li class="nav-item">
-                            <a class="btn btn-danger nav-link text-white" href="{% url 'user-profile' %}">My Profile</a>
-                        </li>
+                        {% if user.is_authority %}
+                            <li class="nav-item">
+                                <a class="btn btn-danger nav-link text-white" href="{% url 'authority-profile' %}">My Profile</a>
+                            </li>
+                        {% else %}
+                            <li class="nav-item">
+                                <a class="btn btn-danger nav-link text-white" href="{% url 'user-profile' %}">My Profile</a>
+                            </li>
+                        {% endif %}
                         <li class="nav-item">
                             <a class="btn btn-warning nav-link text-white" href="{% url 'logout' %}">Logout</a>
                         </li>
@@ -89,7 +95,7 @@
                                 <label for="authority-dropdown">Available Authorities</label>
                                 <select id="authority-dropdown" name="authority" class="form-control">
                                     {% for institution in institutions %}
-                                        <option value="{{ institution.id }}">{{ institution.username }}</option>
+                                        <option value="{{ institution.id }}">{{ institution.institution_name }}</option>
                                     {% endfor %}
                                 </select>
                             </div>
