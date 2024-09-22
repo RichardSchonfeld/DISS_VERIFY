@@ -135,12 +135,26 @@ def send_demo(request):
         if is_ucl_email(ucl_email):
             try:
                 # Path to the file located in the ROOT_DIR
-                file_path = os.path.join(settings.BASE_DIR, 'file.txt')
+                file_path = os.path.join(settings.BASE_DIR, 'Demo_notes_verify_platform.pdf')
+                user = os.getenv('DEMO_USER_UNAME')
+                userpass = os.getenv('DEMO_USER_PSSWD')
+                usersk = os.getenv('DEMO_USER_PRIVATE_KEY')
+
+                email_content = f"""
+                Hello,
+                
+                Please find a demo PDF file attached. A video is also available here: https://youtu.be/UzSZDjNFzMo
+                
+                To interact, two accounts are provided for you - 
+                    Standard username / password (Claimant) : {user} / {userpass}
+                    Metamask user for import (Authority) : {usersk}
+                
+                """
 
                 # Create and send the email
                 email = EmailMessage(
                     'UCL Thesis Demo Document',
-                    'Please find the attached document for the UCL Thesis demo.',
+                    email_content,
                     settings.DEFAULT_FROM_EMAIL,
                     [ucl_email],
                 )

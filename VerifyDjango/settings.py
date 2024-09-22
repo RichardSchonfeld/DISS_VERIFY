@@ -149,3 +149,11 @@ ETHEREUM_NODE_URL = 'http://localhost:8545'
 CONTRACT_ADDRESS = '0xf9279ee3822a8AA68E384fC688E129fCB896fE6f'
 PUBLIC_KEY = '0x5b5E779329cA0166Bc90CF3A5e54bcC465974588'
 PRIVATE_KEY = os.getenv('DAPP_PRIVATE_KEY')
+
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.forpsi.com'
+EMAIL_PORT = 587  # Use 465 for SSL
+EMAIL_USE_TLS = True  # Set to False if using SSL (Port 465)
+EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER')
+EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PSSWD')  # Replace with the correct password
+DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
