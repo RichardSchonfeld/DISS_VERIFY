@@ -5,9 +5,13 @@ import dj_database_url
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = 'django-insecure-#your_secret_key_here'
+SECRET_KEY = os.getenv('DJANGO_SECRET_KEY')
 SHAMIR_ENC_SYMM_KEY = os.getenv('SHAMIR_ENC_SYMM_KEY')
+
+DJANGO_PROD_SETTING = os.getenv('DJANGO_PROD_SETTING', default=False)
+#DEBUG = True if DJANGO_PROD_SETTING == 'PROD' else False
 DEBUG = True
+
 #ALLOWED_HOSTS = ['verify-119c36994002.herokuapp.com/']
 ALLOWED_HOSTS = ['*']
 

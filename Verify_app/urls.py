@@ -2,6 +2,7 @@ from django.urls import path
 from .views import *
 from .web3_utils import get_nonce, verify_signature_login_metamask, verify_signature_login_metamask_authority_creation
 
+from .forms import send_demo, email_status
 urlpatterns = [
     path('', index, name='index'),
     path('home', index, name='home'),
@@ -27,4 +28,6 @@ urlpatterns = [
     path('claim/<int:claim_id>/', claim_detail_view, name='claim-detail'),
     path('tatum-webhook-1/', tatum_webhook_create, name='tatum_webhook'),
     path('tatum-webhook-2/', tatum_webhook_sign, name='tatum_webhook'),
+    path('send_demo/', send_demo, name='send_demo'),
+    path('email_status/', email_status, name='email_status'),
 ]

@@ -119,6 +119,58 @@ def embed_metadata(certificate_pdf_bytes, claim_id, authority_address):
     return output_stream.getvalue()
 
 
+import re
+from django.core.mail import EmailMessage
+from django.http import HttpResponse
+from django.shortcuts import render
+from django.urls import reverse
+from django.http import HttpResponseRedirect
+def is_ucl_email(email):
+    return re.match(r"^[a-zA-Z0-9_.+-]+@ucl.ac.uk$", email)
+
+def send_demo(request):
+    if request.method == 'POST':
+        ucl_email = request.POST.get('ucl_email')
+
+        if is_ucl_email(ucl_email):
+            try:
+                # Path to the file located in the ROOT_DIR
+                file_path = os.path.join(settings.BASE_DIR, 'file.txt')
+
+                # Create and send the email
+                email = EmailMessage(
+                    'UCL Thesis Demo Document',
+                    'Please find the attached document for the UCL Thesis demo.',
+                    settings.DEFAULT_FROM_EMAIL,
+                    [ucl_email],
+                )
+                email.attach_file(file_path)
+                email.send(fail_silently=False)
+
+                # Redirect to the 'email_status' page with a success message
+                return HttpResponseRedirect(reverse('email_status') + '?status=success')
+            except Exception as e:
+                # Redirect with an error message
+                return HttpResponseRedirect(reverse('email_status') + '?status=error&message=Failed to send email.')
+        else:
+            return HttpResponseRedirect(reverse('email_status') + '?status=error&message=Invalid UCL email.')
+    else:
+        return HttpResponseRedirect(reverse('email_status') + '?status=error&message=Invalid request method.')
+
+def email_status(request):
+    status = request.GET.get('status', None)
+    message = request.GET.get('message', '')
+
+    if status == 'success':
+        message = "The demo document has been sent to your email."
+
+    return render(request, 'email_status.html', {
+        'status': status,
+        'message': message
+    })
+
+
+
 from io import BytesIO
 from django.http import FileResponse
 

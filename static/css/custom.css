@@ -1,36 +1,47 @@
-body {
-  background: rgb(211, 131, 18);
-  /*background: linear-gradient(90deg, rgba(211, 131, 18, 1) 0%, rgba(168, 50, 121, 1) 100%);*/
-  background: linear-gradient(to right, #A1FFCE, #FAFFD1);
-  height: 100vh; /* Ensure the body takes the full height of the viewport */
-  margin: 0; /* Remove default margin */
-  display: flex; /* Use Flexbox on the body */
-  align-items: center; /* Center items vertically */
-  justify-content: center; /* Center items horizontally */
-}
+/* Custom hero section */
+        .hero-section {
+            background-color: #f9f9f9;
+            padding: 100px 0;
+        }
+        .hero-section h1 {
+            font-size: 3rem;
+            font-weight: bold;
+        }
+        .hero-section p {
+            font-size: 1.2rem;
+            margin: 20px 0;
+            color: #666;
+        }
 
-.largeDescriptorMainScreen {
-    position: absolute;
-    top: 18%;
-    width: 100%;
-    text-align: center;
+        .icon-style-large {
+            font-size: 5rem;  /* Adjust as needed */
+            color: #007bff;   /* Use a vibrant color */
+            margin-bottom: 20px;
 }
-.largeDescriptorMainScreen h1 {
-    font-size: 102px ;
-}
+        .btn-custom {
+            background-color: #007bff;
+            color: #fff;
+            padding: 15px 30px;
+            font-size: 1.1rem;
+            border-radius: 5px;
+            transition: background-color 0.3s ease;
+        }
+        .btn-custom:hover {
+            background-color: #0056b3;
+        }
+        /* Features section */
+        .feature-tile {
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+        /* Testimonials section */
+        .testimonial-tile {
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+        }
 
-.largeButtonMainScreen {
-  padding: 22% 0;
-  font-size: 1.5rem;
-  border-radius: 25px;
-  border-width: 7px;
-  transition: transform 0.3s;
-}
-
-.largeButtonMainScreen:hover {
-  transform: scale(1.05);
-}
-
-.container {
-  text-align: center; /* Center text inside the container */
-}
+        .ucl-intro {
+            border-radius: 12px;
+            background: #8dc8e4;
+        }

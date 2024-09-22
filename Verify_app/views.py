@@ -249,7 +249,6 @@ def tatum_webhook_sign(request):
 
 
 @login_required
-@csrf_exempt
 def create_claim(request):
     if request.method == 'POST':
         data = request.body.decode('utf-8')
@@ -513,7 +512,7 @@ def sign_certificate_view(request):
         })
 
     # Render list of unsigned claims
-    unsigned_claims = Claim.objects.filter(authority=request.user, signed=False)
+    unsigned_claims = Claim.objects.filter(authority=request.user, signed=False).exclude(claim_id=0)
     context = {
         'unsigned_claims': unsigned_claims,
         'is_web3_user': request.user.is_web3_user,
@@ -715,7 +714,7 @@ def authority_profile_view(request):
 
     if user.is_authenticated and user.is_authority:
         # Fetch pending claims (i.e., claims that are not signed yet) for the logged-in authority
-        pending_claims = Claim.objects.filter(authority=user, signed=False)
+        pending_claims = Claim.objects.filter(authority=user, signed=False).exclude(claim_id=0)
 
         # Fetch signed claims for the logged-in authority
         signed_claims = Claim.objects.filter(authority=user, signed=True)
