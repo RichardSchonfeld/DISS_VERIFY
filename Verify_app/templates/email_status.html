@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    {% load static %}
+    <title>Email Status</title>
+    <link rel="stylesheet" href="{% static 'css/custom.css' %}">
+</head>
+<body>
+    <div class="container">
+        <div class="row">
+            <div class="col-md-12">
+                <h3>Email Status</h3>
+                <p>{{ message }}</p>
+                <a href="{% url 'index' %}" class="btn btn-secondary" style="position: absolute; top: 10px; right: 10px;">Return Home</a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
