@@ -119,7 +119,6 @@ LOCAL_TEST_URL = 'http://localhost:8545'
 
 WEB3_URL = 'https://eth-sepolia.g.alchemy.com/v2/aYWWiwfNOVekgXAEAKCgLB7qPpmRLCkS'
 
-
 # Ensuring presence of vars loaded
 #if not all([INFURA_API_KEY, INFURA_API_SECRET]):
     #raise ValueError("Infura API credentials not set properly in environ settings")
@@ -136,8 +135,8 @@ PINATA_JWT = os.getenv('PINATA_JWT')
 TATUM_API_KEY = os.getenv('TATUM_API_KEY')
 TATUM_SECRET = os.getenv('TATUM_SECRET')
 
-#CHAIN_ID = '11155111'
-CHAIN_ID = '1337'
+CHAIN_ID = '11155111'
+#CHAIN_ID = 1337
 
 # Some profile config
 SERVER_OP_ACC_ADDRESS = os.getenv('SERVER_OP_ACC_ADDRESS')
