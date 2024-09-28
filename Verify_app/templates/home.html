@@ -68,9 +68,9 @@
         <div class="container">
             {% if not user.is_authenticated %}
                 <!-- Display for Non-Authenticated Users (Wrapped in Card) -->
-                <div class="card feature-tile text-center p-4">
+                <div class="text-center p-4">
                     <header class="hero-section">
-                        <h1>Secure, Private, and Decentralized Credential Verification</h1>
+                        <h1 class="gradient-text">Credential verification, <span class="gradient-forever">Forever.</span></h1>
                         <p>A privacy-first platform ensuring trust and integrity for credentials using blockchain technology and off-chain storage.</p>
                         <a href="{% url 'register' %}" class="btn btn-custom me-3">Get Started</a>
                         <a href="#features" class="btn btn-outline-primary">Learn More</a>
@@ -108,7 +108,7 @@
     </header>
 
     <!-- UCL demo -->
-    <div class="container ucl-intro">
+    <div class="container ucl-intro" style="display: none;">
         <div class="row">
             <h3>Here for the UCL Thesis demo?</h3>
             <p>Insert your UCL email, a demo doc. will be sent!</p>
@@ -130,41 +130,33 @@
             <h2 class="mb-5">Why Choose Us?</h2>
             <div class="row">
                 <div class="col-md-6 mb-4">
-                    <div class="card feature-tile">
+                    <div class="feature-tile">
                         <i class="bi bi-shield-lock icon-style-large"></i> <!-- Enlarged icon -->
-                        <div class="card-body">
                             <h3 class="card-title">Privacy-First Design</h3>
                             <p>Your personal data remains secure. We never store PII on-chain, ensuring complete control over your credentials.</p>
-                        </div>
                     </div>
                 </div>
                 <div class="col-md-6 mb-4">
-                    <div class="card feature-tile">
+                    <div class="feature-tile">
                         <i class="bi bi-file-lock icon-style-large"></i> <!-- Enlarged icon -->
-                        <div class="card-body">
                             <h3 class="card-title">Tamper-Proof Credentials</h3>
                             <p>Our decentralized approach guarantees that credentials cannot be modified or tampered with after issuance.</p>
-                        </div>
                     </div>
                 </div>
             </div>
             <div class="row">
                 <div class="col-md-6 mb-4">
-                    <div class="card feature-tile">
+                    <div class="feature-tile">
                         <i class="bi bi-download icon-style-large"></i> <!-- Enlarged icon -->
-                        <div class="card-body">
                             <h3 class="card-title">User Control</h3>
                             <p>Full autonomy over your credentials—view, share, or store them as you see fit.</p>
-                        </div>
                     </div>
                 </div>
                 <div class="col-md-6 mb-4">
-                    <div class="card feature-tile">
+                    <div class="feature-tile">
                         <i class="bi bi-check-circle icon-style-large"></i> <!-- Enlarged icon -->
-                        <div class="card-body">
                             <h3 class="card-title">Web3 Without Hassle</h3>
                             <p>Seamless onboarding for non-Web3 users, offering an intuitive experience with or without blockchain knowledge.</p>
-                        </div>
                     </div>
                 </div>
             </div>

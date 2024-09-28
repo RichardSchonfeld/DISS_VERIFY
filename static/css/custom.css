@@ -1,16 +1,22 @@
 /* Custom hero section */
         .hero-section {
-            background-color: #f9f9f9;
+            #background-color: #f9f9f9;
             padding: 100px 0;
         }
         .hero-section h1 {
-            font-size: 3rem;
+            font-size: 4rem;
             font-weight: bold;
         }
         .hero-section p {
             font-size: 1.2rem;
             margin: 20px 0;
             color: #666;
+        }
+
+        .gradient-forever {
+            background: linear-gradient(90deg, #6A0DAD, #FF7F50, #FF4500);
+            -webkit-background-clip: text;
+            color: transparent;gi
         }
 
         .icon-style-large {
@@ -32,12 +38,14 @@
         /* Features section */
         .feature-tile {
             border-radius: 10px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+            border: none;
+            padding: 20px;
         }
         /* Testimonials section */
         .testimonial-tile {
             border-radius: 10px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
             padding: 20px;
         }
 
